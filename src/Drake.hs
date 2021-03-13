@@ -13,6 +13,10 @@
 -- See README for more info
 module Drake
   ( projectName,
+    RingZipper,
+    TorusZipper,
+    read,
+    read2d,
   )
 where
 
@@ -21,7 +25,6 @@ import Control.Comonad
 -- import Data.List (intercalate)
 -- import Data.Monoid (Any)
 import Data.Vector as V
-
 -- import Diagrams.Backend.CmdLine
 -- import Diagrams.Backend.SVG
 -- import Diagrams.Core.Compile
@@ -30,6 +33,7 @@ import Data.Vector as V
 -- import Diagrams.TwoD
 -- import Diagrams.TwoD.Layout.Grid
 -- import System.Random
+import Text.Show as S
 
 projectName :: String
 projectName = "Drake"
@@ -37,37 +41,30 @@ projectName = "Drake"
 instance Functor RingZipper where
   fmap f RingZipper {..} = RingZipper {front = front, vector = fmap f vector}
 
+instance Show a => Show (RingZipper a) where
+  show r = S.show $ V.generate (V.length $ vector r) (r `read`)
+
 read :: RingZipper a -> Int -> a
 RingZipper {..} `read` i = vector ! (i + front `mod` V.length vector)
 
-duplicate' :: RingZipper a -> RingZipper (RingZipper a)
-duplicate' r@RingZipper {..} =
-  RingZipper
-    { front = front,
-      vector = V.generate s (\i -> r {front = (i + front) `mod` s})
-    }
-  where
-    s = V.length vector
-
 instance Comonad RingZipper where
   extract RingZipper {..} = V.head vector
-  extend f r = fmap f (duplicate' r)
+  duplicate r@RingZipper {..} =
+    RingZipper
+      { front = front,
+        vector = V.generate s (\i -> r {front = (i + front) `mod` s})
+      }
+    where
+      s = V.length vector
 
 data RingZipper a = RingZipper {front :: Int, vector :: V.Vector a}
+  deriving (Eq)
 
 data TorusZipper a = TorusZipper {frontT :: (Int, Int), widthT :: Int, vectorT :: V.Vector a}
+  deriving (Show, Eq)
 
 instance Functor TorusZipper where
   fmap f t@TorusZipper {vectorT} = t {vectorT = fmap f vectorT}
-
-duplicate'' :: TorusZipper a -> TorusZipper (TorusZipper a)
-duplicate'' t@TorusZipper {..} =
-  t {vectorT = V.generate s (\i -> t {frontT = f i})}
-  where
-    f i = (x i, y i)
-    x i = (i + fst frontT) `mod` widthT
-    y i = ((i `div` widthT) + snd frontT) `mod` (s `div` widthT)
-    s = V.length vectorT
 
 read2d :: TorusZipper a -> (Int, Int) -> a
 TorusZipper {..} `read2d` (i, j) =
@@ -75,4 +72,10 @@ TorusZipper {..} `read2d` (i, j) =
 
 instance Comonad TorusZipper where
   extract TorusZipper {..} = V.head vectorT
-  extend f t = fmap f (duplicate'' t)
+  duplicate t@TorusZipper {..} =
+    t {vectorT = V.generate s (\i -> t {frontT = f i})}
+    where
+      f i = (x i, y i)
+      x i = (i + fst frontT) `mod` widthT
+      y i = ((i `div` widthT) + snd frontT) `mod` (s `div` widthT)
+      s = V.length vectorT
