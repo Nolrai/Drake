@@ -1,9 +1,16 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE TypeInType #-}
+
+-- {-# LANGUAGE NoMonomorphismRestriction #-}
 
 -- |
 -- Copyright: (c) 2021 Chris A. Upshaw
@@ -13,10 +20,9 @@
 -- See README for more info
 module Drake
   ( projectName,
-    RingZipper,
-    TorusZipper,
-    read,
-    read2d,
+    RingZipper (..),
+    TorusZipper (..),
+    ArrayLike (..),
   )
 where
 
@@ -24,7 +30,7 @@ import Control.Comonad
 -- import Control.Monad
 -- import Data.List (intercalate)
 -- import Data.Monoid (Any)
-import Data.Vector as V
+import qualified Data.Vector as V
 -- import Diagrams.Backend.CmdLine
 -- import Diagrams.Backend.SVG
 -- import Diagrams.Core.Compile
@@ -35,47 +41,65 @@ import Data.Vector as V
 -- import System.Random
 import Text.Show as S
 
+class ArrayLike arr where
+  type Index arr
+  type Elm arr
+  (!) :: arr -> Index arr -> Elm arr
+
 projectName :: String
 projectName = "Drake"
 
+-- ignore the index to the front, map on the vector.
 instance Functor RingZipper where
-  fmap f RingZipper {..} = RingZipper {front = front, vector = fmap f vector}
+  fmap f RingZipper {..} = RingZipper {frontR = frontR, vectorR = fmap f vectorR}
 
-instance Show a => Show (RingZipper a) where
-  show r = S.show $ V.generate (V.length $ vector r) (r `read`)
-
-read :: RingZipper a -> Int -> a
-RingZipper {..} `read` i = vector ! (i + front `mod` V.length vector)
+-- only consider them different if they are observibly different.
+instance Eq a => Eq (RingZipper a) where
+  l == r = size == length (vectorR r) && all (\n -> (l ! n) == (r ! n)) indexes
+    where
+      indexes :: V.Vector Int
+      indexes = [0 .. size]
+      size :: Int
+      size = length (vectorR l)
 
 instance Comonad RingZipper where
-  extract RingZipper {..} = V.head vector
+  extract = (! 0)
   duplicate r@RingZipper {..} =
     RingZipper
-      { front = front,
-        vector = V.generate s (\i -> r {front = (i + front) `mod` s})
+      { frontR = frontR,
+        vectorR = V.generate s (\i -> r {frontR = i `mod` s})
       }
     where
-      s = V.length vector
+      s = V.length vectorR
 
-data RingZipper a = RingZipper {front :: Int, vector :: V.Vector a}
-  deriving (Eq)
+data RingZipper a = RingZipper {frontR :: Int, vectorR :: V.Vector a}
+  deriving stock (Show, Generic)
+  deriving anyclass (NFData)
 
 data TorusZipper a = TorusZipper {frontT :: (Int, Int), widthT :: Int, vectorT :: V.Vector a}
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (NFData)
 
 instance Functor TorusZipper where
   fmap f t@TorusZipper {vectorT} = t {vectorT = fmap f vectorT}
 
-read2d :: TorusZipper a -> (Int, Int) -> a
-TorusZipper {..} `read2d` (i, j) =
-  vectorT ! (((i + fst frontT) `mod` widthT) + ((j + snd frontT) `mod` (V.length vectorT `div` widthT)) * widthT)
-
 instance Comonad TorusZipper where
-  extract TorusZipper {..} = V.head vectorT
+  extract = (! (0, 0))
   duplicate t@TorusZipper {..} =
     t {vectorT = V.generate s (\i -> t {frontT = f i})}
     where
       f i = (x i, y i)
-      x i = (i + fst frontT) `mod` widthT
-      y i = ((i `div` widthT) + snd frontT) `mod` (s `div` widthT)
+      x i = i `mod` widthT
+      y i = (i `div` widthT) `mod` (s `div` widthT)
       s = V.length vectorT
+
+instance ArrayLike (TorusZipper a) where
+  (!) TorusZipper {..} (i, j) =
+    vectorT V.! (((i + fst frontT) `mod` widthT) + ((j + snd frontT) `mod` (V.length vectorT `div` widthT)) * widthT)
+  type Index (TorusZipper a) = (Int, Int)
+  type Elm (TorusZipper a) = a
+
+instance ArrayLike (RingZipper a) where
+  (!) RingZipper {..} i = vectorR V.! ((i + frontR) `mod` V.length vectorR)
+  type Index (RingZipper a) = Int
+  type Elm (RingZipper a) = a
