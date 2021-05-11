@@ -54,13 +54,11 @@ library
   hs-source-dirs:      src
   build-depends:       comonad
                      , vector
-                     , diagrams
-                     , diagrams-contrib
-                     , diagrams-lib
-                     , diagrams-core
-                     , diagrams-svg
+                     , gloss
                      , random
   exposed-modules:     Drake
+                     , Draw
+                     , STCA
 
 executable Drake
   import:              common-options

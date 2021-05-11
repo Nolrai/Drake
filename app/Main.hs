@@ -1,7 +1,9 @@
 module Main (main) where
 
-import Drake (projectName)
+import Drake ()
+import Draw ()
+import Graphics.Gloss
 
 
 main :: IO ()
-main = putStrLn ("Executable for " ++ projectName)
+main = displace FullScreen white (Circle 80)
