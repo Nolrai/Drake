@@ -6,4 +6,4 @@ import Graphics.Gloss
 
 
 main :: IO ()
-main = displace FullScreen white (Circle 80)
+main = display FullScreen white (Circle 80)

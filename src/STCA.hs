@@ -15,7 +15,7 @@ offset (x, y) E = (x + 1, y)
 offset (x, y) S = (x, y + 1)
 offset (x, y) W = (x -1, y)
 
-newtype Cell a = Cell {-# UNPACK #-} !(a, a, a, a)
+data Cell a = Cell {-# UNPACK #-} (a, a, a, a)
 
 readCell :: Cell a -> VN -> a
 readCell (Cell (n, _, _, _)) N = n

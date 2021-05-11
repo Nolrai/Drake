@@ -24,6 +24,7 @@ source-repository head
 common common-options
   build-depends:       base ^>= 4.14.0.0
                      , relude
+                     , gloss
 
   mixins:              base hiding (Prelude)
                      , relude (Relude as Prelude)
@@ -54,7 +55,6 @@ library
   hs-source-dirs:      src
   build-depends:       comonad
                      , vector
-                     , gloss
                      , random
   exposed-modules:     Drake
                      , Draw
