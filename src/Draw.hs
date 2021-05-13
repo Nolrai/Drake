@@ -1,19 +1,15 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
 
 module Draw
-  (
-    Draw(..),
-    tileSize,
-    aroundZero,
+  ( Draw (..),
   )
-  where
+where
 
+import Data.Set
 import Drake
 import Graphics.Gloss
 import STCA
-import Data.Set
 
 tileSize :: Float
 tileSize = 10.0
@@ -32,7 +28,7 @@ instance Draw a () => Draw (TorusZipper a) (Int, Int) where
       pure $ translate (fromIntegral idx * tileSize) (fromIntegral idy * tileSize) (draw (tz `read2d` (idx, idy)) ())
 
 instance Draw (TorusZipper (Cell Bool), Set (Template Bool)) (Int, Int) where
-  draw (tz, rules) (width, hight) = 
+  draw (tz, rules) (width, hight) =
     pictures $ do
       idx <- aroundZero width
       idy <- aroundZero hight
@@ -43,8 +39,8 @@ instance Draw (Cell Bool) () where
     where
       applyColor :: VN -> Picture -> Picture
       applyColor vn = color (if readCell c vn then light blue else dark orange)
-    
-instance Draw (Cell Bool) (Bool) where
+
+instance Draw (Cell Bool) Bool where
   draw c b = pictures $ zipWith applyColor [N .. W] triangles
     where
       applyColor :: VN -> Picture -> Picture
