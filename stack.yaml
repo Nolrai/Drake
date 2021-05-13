@@ -1,1 +1,4 @@
 resolver: lts-17.11
+
+extra-deps:
+- random-1.2.0

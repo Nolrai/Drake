@@ -4,6 +4,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 -- |
 -- Copyright: (c) 2021 Chris A. Upshaw
@@ -17,21 +18,12 @@ module Drake
     TorusZipper,
     read,
     read2d,
+    mkTorus,
   )
 where
 
 import Control.Comonad
--- import Control.Monad
--- import Data.List (intercalate)
--- import Data.Monoid (Any)
 import Data.Vector as V
--- import Diagrams.Backend.CmdLine
--- import Diagrams.Backend.SVG
--- import Diagrams.Core.Compile
--- import Diagrams.Core.Types
--- import Diagrams.Prelude hiding (after)
--- import Diagrams.TwoD
--- import Diagrams.TwoD.Layout.Grid
 -- import System.Random
 import Text.Show as S
 
@@ -58,17 +50,22 @@ instance Comonad RingZipper where
       s = V.length vector
 
 data RingZipper a = RingZipper {front :: Int, vector :: V.Vector a}
-  deriving (Eq)
+  deriving stock (Eq)
 
 data TorusZipper a = TorusZipper {frontT :: (Int, Int), widthT :: Int, vectorT :: V.Vector a}
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
+
+mkTorus :: Int -> V.Vector a -> TorusZipper a
+mkTorus w v = TorusZipper {frontT = (0,0), widthT = w, vectorT = v}
 
 instance Functor TorusZipper where
   fmap f t@TorusZipper {vectorT} = t {vectorT = fmap f vectorT}
 
+read2dAux :: TorusZipper a -> (Int, Int) -> Int
+TorusZipper {..} `read2dAux` (i, j) = (((i + fst frontT) `mod` widthT) + ((j + snd frontT) `mod` (V.length vectorT `div` widthT)) * widthT)
+
 read2d :: TorusZipper a -> (Int, Int) -> a
-TorusZipper {..} `read2d` (i, j) =
-  vectorT ! (((i + fst frontT) `mod` widthT) + ((j + snd frontT) `mod` (V.length vectorT `div` widthT)) * widthT)
+tz `read2d` p = vectorT tz ! (tz `read2dAux` p)
 
 instance Comonad TorusZipper where
   extract TorusZipper {..} = V.head vectorT
