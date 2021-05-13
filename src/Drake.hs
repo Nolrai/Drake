@@ -1,10 +1,10 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE DerivingStrategies #-}
 
 -- |
 -- Copyright: (c) 2021 Chris A. Upshaw
@@ -56,13 +56,13 @@ data TorusZipper a = TorusZipper {frontT :: (Int, Int), widthT :: Int, vectorT :
   deriving stock (Show, Eq)
 
 mkTorus :: Int -> V.Vector a -> TorusZipper a
-mkTorus w v = TorusZipper {frontT = (0,0), widthT = w, vectorT = v}
+mkTorus w v = TorusZipper {frontT = (0, 0), widthT = w, vectorT = v}
 
 instance Functor TorusZipper where
   fmap f t@TorusZipper {vectorT} = t {vectorT = fmap f vectorT}
 
 read2dAux :: TorusZipper a -> (Int, Int) -> Int
-TorusZipper {..} `read2dAux` (i, j) = (((i + fst frontT) `mod` widthT) + ((j + snd frontT) `mod` (V.length vectorT `div` widthT)) * widthT)
+TorusZipper {..} `read2dAux` (i, j) = ((i + fst frontT) `mod` widthT) + ((j + snd frontT) `mod` (V.length vectorT `div` widthT)) * widthT
 
 read2d :: TorusZipper a -> (Int, Int) -> a
 tz `read2d` p = vectorT tz ! (tz `read2dAux` p)

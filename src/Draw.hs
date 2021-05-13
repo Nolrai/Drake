@@ -1,5 +1,5 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 
 module Draw where
@@ -15,10 +15,10 @@ class Draw a b | a -> b where
   draw :: a -> b -> Picture
 
 aroundZero :: Int -> [Int]
-aroundZero n = [-(n `div` 2) .. (n `div` 2) + (if n `mod` 2 == 0 then -1 else 0)]
+aroundZero n = [- (n `div` 2) .. (n `div` 2) + (if n `mod` 2 == 0 then -1 else 0)]
 
 instance Draw a () => Draw (TorusZipper a) (Int, Int) where
-  draw tz (width, hight) = 
+  draw tz (width, hight) =
     pictures $ do
       idx <- aroundZero width
       idy <- aroundZero hight
@@ -32,5 +32,4 @@ instance Draw (Cell Bool) () where
       triangles :: [Picture]
       triangles = zipWith rotate [0, 90, 180, -90] (replicate 4 triangleNorth)
       triangleNorth :: Picture
-      triangleNorth = polygon [(-tileSize/2, -tileSize/2), (tileSize/2, -tileSize/2), (0,0)]
-    
+      triangleNorth = polygon [(- tileSize / 2, - tileSize / 2), (tileSize / 2, - tileSize / 2), (0, 0)]

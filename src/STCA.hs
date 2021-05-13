@@ -3,14 +3,13 @@
 {-# LANGUAGE UnboxedSums #-}
 
 module STCA
-  (
-    VN(..),
+  ( VN (..),
     offset,
-    Cell(),
+    Cell (),
     cell,
     readCell,
   )
-  where
+where
 
 import Drake
 
@@ -23,16 +22,16 @@ offset (x, y) E = (x + 1, y)
 offset (x, y) S = (x, y + 1)
 offset (x, y) W = (x - 1, y)
 
-data Cell a = Cell {-# UNPACK #-} (a, a, a, a)
+newtype Cell a = Cell {-# UNPACK #-} (a, a, a, a)
 
-cell n e s w = Cell (n,e,s,w)
+cell n e s w = Cell (n, e, s, w)
 
-writeCell (Cell (n, e, s, w)) nv v = 
+writeCell (Cell (n, e, s, w)) nv v =
   case nv of
-    N -> Cell (v, e, s, w) 
-    E -> Cell (n, v, s, w) 
-    S -> Cell (n, e, v, w) 
-    W -> Cell (n, e, s, v) 
+    N -> Cell (v, e, s, w)
+    E -> Cell (n, v, s, w)
+    S -> Cell (n, e, v, w)
+    W -> Cell (n, e, s, v)
 
 readCell :: Cell a -> VN -> a
 readCell (Cell (n, _, _, _)) N = n
