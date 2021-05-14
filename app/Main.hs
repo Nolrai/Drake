@@ -8,15 +8,18 @@ import Graphics.Gloss
 import System.Random.Stateful
 import Data.Vector as V
 
+size :: (Int, Int)
+size = (150, 150)
+
 main :: IO ()
 main = 
   do
   g <- getStdGen
   putTextLn "StdGen: "
   print g
-  v <- mkCell `V.mapM` V.replicate 200 ()
-  let mat = mkTorus 20 v
-  display FullScreen blue (draw mat (20, 20)) 
+  v <- mkCell `V.mapM` V.replicate (uncurry (*) size) ()
+  let mat = mkTorus (fst size) v
+  display FullScreen blue (draw (mat, ruleLHZ) size)
 
 mkCell :: () -> IO (Cell Bool)
 mkCell () = (cell <$> randomIO  <*> randomIO  <*> randomIO  <*> randomIO )

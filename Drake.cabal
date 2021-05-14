@@ -25,6 +25,7 @@ common common-options
   build-depends:       base ^>= 4.14.0.0
                      , relude
                      , vector
+                     , containers
 
   mixins:              base hiding (Prelude)
                      , relude (Relude as Prelude)
