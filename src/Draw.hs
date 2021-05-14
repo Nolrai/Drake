@@ -1,5 +1,5 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 
 module Draw
@@ -22,10 +22,10 @@ class Draw a b where
   draw :: a -> b -> Picture
 
 aroundZero :: Int -> [Int]
-aroundZero n = [-(n `div` 2) .. (n `div` 2) + (if n `mod` 2 == 0 then -1 else 0)]
+aroundZero n = [- (n `div` 2) .. (n `div` 2) + (if n `mod` 2 == 0 then -1 else 0)]
 
 instance Draw a () => Draw (TorusZipper a) (Int, Int) where
-  draw tz (width, hight) = 
+  draw tz (width, hight) =
     pictures $ do
       idx <- aroundZero width
       idy <- aroundZero hight
@@ -43,17 +43,15 @@ instance Draw (Cell Bool) () where
     where
       applyColor :: VN -> Picture -> Picture
       applyColor vn = color (if readCell c vn then light blue else dark orange)
-      triangles :: [Picture]
-      triangles = zipWith rotate [0, 90, 180, -90] (replicate 4 triangleNorth)
-      triangleNorth :: Picture
-      triangleNorth = polygon [(-tileSize/2, -tileSize/2), (tileSize/2, -tileSize/2), (0,0)]
     
 instance Draw (Cell Bool) (Bool) where
   draw c b = pictures $ zipWith applyColor [N .. W] triangles
     where
       applyColor :: VN -> Picture -> Picture
       applyColor vn = color $ (if b then dark else light) (if c `readCell` vn then cyan else orange)
-      triangles :: [Picture]
-      triangles = zipWith rotate [0, 90, 180, -90] (replicate 4 triangleNorth)
-      triangleNorth :: Picture
-      triangleNorth = polygon [(-tileSize/2, -tileSize/2), (tileSize/2, -tileSize/2), (0,0)]
+
+triangles :: [Picture]
+triangles = zipWith rotate [0, 90, 180, -90] (replicate 4 triangleNorth)
+
+triangleNorth :: Picture
+triangleNorth = polygon [(- tileSize / 2, - tileSize / 2), (tileSize / 2, - tileSize / 2), (0, 0)]

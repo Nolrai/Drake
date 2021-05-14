@@ -5,10 +5,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module STCA
-  (
-    VN(..),
+  ( VN (..),
     offset,
-    Cell(),
+    Cell (),
     cell,
     readCell,
     writeCell,
@@ -18,7 +17,7 @@ module STCA
     readTemplateFromTorus,
     ruleLHZ
   )
-  where
+where
 
 import Drake
 import Data.Set as Set
@@ -47,10 +46,10 @@ cell n e s w = Cell (n,e,s,w)
 writeCell :: Cell a -> VN -> a -> Cell a
 writeCell (Cell (n, e, s, w)) nv v = 
   case nv of
-    N -> Cell (v, e, s, w) 
-    E -> Cell (n, v, s, w) 
-    S -> Cell (n, e, v, w) 
-    W -> Cell (n, e, s, v) 
+    N -> Cell (v, e, s, w)
+    E -> Cell (n, v, s, w)
+    S -> Cell (n, e, v, w)
+    W -> Cell (n, e, s, v)
 
 readCell :: Cell a -> VN -> a
 readCell (Cell (n, _, _, _)) N = n
