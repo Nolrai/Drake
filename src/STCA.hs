@@ -38,7 +38,7 @@ offset (x, y) S = (x, y + 1)
 offset (x, y) W = (x - 1, y)
 
 data Cell a = Cell {-# UNPACK #-} !(a, a, a, a)
-  deriving stock (Ord, Eq, Read, Functor)
+  deriving stock (Ord, Eq, Read, Functor, Show)
 
 cell :: a -> a -> a -> a -> Cell a
 cell n e s w = Cell (n,e,s,w)

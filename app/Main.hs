@@ -5,25 +5,45 @@ module Main
   )
 where
 
-import Data.Vector as V
-import Drake (mkTorus)
+import qualified Data.Vector as V
+import Drake (mkTorus, TorusZipper)
 import Draw (Draw (..))
 import Graphics.Gloss
 import STCA
 import System.Random.Stateful
-
-size :: (Int, Int)
-size = (150, 150)
+import System.Environment
+import Data.Text.IO (hPutStrLn)
 
 main :: IO ()
 main =
   do
-    g <- getStdGen
-    putTextLn "StdGen: "
-    print g
-    v <- mkCell `V.mapM` V.replicate (uncurry (*) size) ()
-    let mat = mkTorus (fst size) v
+    args <- getArgs
+    (size, mat) <- 
+      case args of
+        [filename] -> readMatFile filename
+        _ -> mkRandomTorus
+    print (size, mat)
     display FullScreen blue (draw (mat, ruleLHZ) size)
 
+readMatFile :: FilePath -> IO ((Int, Int), TorusZipper (Cell Bool))
+readMatFile filename = 
+  do
+    x <- readEither <$> readFile filename
+    case x of
+      Left err -> fail (toString err)
+      Right r -> pure r
+
+
+defaultSize :: (Int, Int)
+defaultSize = (150, 150)
+
+mkRandomTorus :: IO ((Int, Int), TorusZipper (Cell Bool))
+mkRandomTorus =
+  do
+    g <- getStdGen
+    hPutStrLn stderr $ "StdGen: " <> show g
+    v <- mkCell `V.mapM` V.replicate (uncurry (*) defaultSize) ()
+    pure $ (defaultSize, mkTorus (fst defaultSize) v)
+    
 mkCell :: () -> IO (Cell Bool)
 mkCell () = cell <$> randomIO <*> randomIO <*> randomIO <*> randomIO

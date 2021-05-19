@@ -53,7 +53,7 @@ data RingZipper a = RingZipper {front :: Int, vector :: V.Vector a}
   deriving stock (Eq)
 
 data TorusZipper a = TorusZipper {frontT :: (Int, Int), widthT :: Int, vectorT :: V.Vector a}
-  deriving stock (Show, Eq)
+  deriving stock (Show, Read, Eq)
 
 mkTorus :: Int -> V.Vector a -> TorusZipper a
 mkTorus w v = TorusZipper {frontT = (0, 0), widthT = w, vectorT = v}
