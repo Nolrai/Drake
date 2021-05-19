@@ -11,6 +11,8 @@ module STCA
     cell,
     readCell,
     writeCell,
+    writeCellOnTorus,
+    toggleCellOnTorus,
     Template(),
     template,
     readTemplate,
@@ -56,6 +58,14 @@ readCell (Cell (n, _, _, _)) N = n
 readCell (Cell (_, e, _, _)) E = e
 readCell (Cell (_, _, s, _)) S = s
 readCell (Cell (_, _, _, w)) W = w
+
+writeCellOnTorus :: (Int, Int) -> VN -> a -> TorusZipper (Cell a) -> TorusZipper (Cell a)
+writeCellOnTorus pos vn value tz = write2D tz pos (writeCell (tz `read2D` pos) vn value)
+
+toggleCellOnTorus :: (Int, Int) -> VN -> TorusZipper (Cell Bool) -> TorusZipper (Cell Bool)
+toggleCellOnTorus pos vn tz =
+  let targetCell = tz `read2d` pos in
+  write2D tz pos (writeCell targetCell vn (not $ targetCell `readCell` vn))
 
 data Template a = Template {-# Unpack #-} !((Cell a), (Cell a))
   deriving stock (Ord, Eq, Read, Functor)
