@@ -18,12 +18,14 @@ module Drake
     TorusZipper,
     read,
     read2d,
+    write2d,
     mkTorus,
   )
 where
 
 import Control.Comonad
 import Data.Vector as V
+import qualified Data.Vector.Mutable as MV
 -- import System.Random
 import Text.Show as S
 
@@ -66,6 +68,9 @@ TorusZipper {..} `read2dAux` (i, j) = ((i + fst frontT) `mod` widthT) + ((j + sn
 
 read2d :: TorusZipper a -> (Int, Int) -> a
 tz `read2d` p = vectorT tz ! (tz `read2dAux` p)
+
+write2d :: TorusZipper a -> (Int, Int) -> a -> TorusZipper a
+write2d t@TorusZipper {..} pos value = t{vectorT = V.modify (\v -> MV.write v (t `read2dAux` pos) value) vectorT}
 
 instance Comonad TorusZipper where
   extract TorusZipper {..} = V.head vectorT

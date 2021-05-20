@@ -1,8 +1,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Draw
   ( Draw (..),
+    tileSize
   )
 where
 
@@ -12,7 +14,7 @@ import Graphics.Gloss
 import STCA
 
 tileSize :: Float
-tileSize = 10.0
+tileSize = 50
 
 class Draw a b where
   draw :: a -> b -> Picture

@@ -62,12 +62,12 @@ readCell (Cell (_, _, s, _)) S = s
 readCell (Cell (_, _, _, w)) W = w
 
 writeCellOnTorus :: (Int, Int) -> VN -> a -> TorusZipper (Cell a) -> TorusZipper (Cell a)
-writeCellOnTorus pos vn value tz = write2D tz pos (writeCell (tz `read2D` pos) vn value)
+writeCellOnTorus pos vn value tz = write2d tz pos (writeCell (tz `read2d` pos) vn value)
 
 toggleCellOnTorus :: (Int, Int) -> VN -> TorusZipper (Cell Bool) -> TorusZipper (Cell Bool)
 toggleCellOnTorus pos vn tz =
   let targetCell = tz `read2d` pos in
-  write2D tz pos (writeCell targetCell vn (not $ targetCell `readCell` vn))
+  write2d tz pos (writeCell targetCell vn (not $ targetCell `readCell` vn))
 
 data Template a = Template {-# UNPACK #-} !(Cell a, Cell a)
   deriving stock (Ord, Eq, Read, Functor)
@@ -106,3 +106,5 @@ ruleLHZ =
             ((1, 0, 0, 1, 1, 1, 0, 1), (1, 0, 1, 1, 1, 0, 0, 1)), -- Turn Right
             ((0, 0, 1, 1, 0, 1, 1, 1), (1, 1, 0, 1, 1, 1, 0, 0)) -- Toggle Memory
           ]
+
+-- findHeads = (\ pos -> readTemplateFromTorus )
