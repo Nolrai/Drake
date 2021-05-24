@@ -3,6 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE UnboxedSums #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module STCA
   ( VN (..),
@@ -11,21 +12,28 @@ module STCA
     cell,
     readCell,
     writeCell,
+    toCell,
     writeCellOnTorus,
     toggleCellOnTorus,
     Template (),
     template,
     readTemplate,
     readTemplateFromTorus,
-    ruleLHZ,
+    lhz_map,
+    find_head_cells,
   )
 where
 
-import Data.Set as Set
+-- import Data.Set as Set
+import Data.Map as M
 import Drake
+import Data.Vector as V
 
 data VN = N | E | S | W
   deriving stock (Show, Read, Eq, Ord, Enum)
+
+all_vn :: [VN]
+all_vn = [N, E, S, W]
 
 inv :: VN -> VN
 inv N = S
@@ -88,23 +96,94 @@ readTemplateFromTorus tz pos =
     readOffset :: VN -> a
     readOffset vn = (tz `read2d` offset pos vn) `readCell` inv vn
 
-convert :: (Int, Int, Int, Int, Int, Int, Int, Int) -> Template Bool
-convert (i_top, i_bottom, i_left, i_right, o_top, o_bottom, o_left, o_right) =
-  -- T, B, L, R order
-  ((== 1) :: Int -> Bool) <$> template (cell i_top i_right i_bottom i_left) (cell o_top o_right o_bottom o_left) -- N, E, S, W order
+data LAR = 
+  L | -- Left 
+  A | -- Across
+  R   -- Right
+  deriving stock (Eq, Ord, Show, Read)
 
-both :: (a -> b) -> (a, a) -> (b, b)
-both f ~(x, y) = (f x, f y)
+data WB =
+  Z | -- Empty
+  F   -- Full
+  deriving stock (Eq, Ord, Show, Read)
 
-ruleLHZ :: Set (Template Bool)
-ruleLHZ =
-  Set.fromList $
-    fst . both convert
-      <$> [ ((0, 0, 0, 0, 0, 0, 1, 0), (0, 0, 0, 1, 0, 0, 0, 0)), -- move forward
-            ((1, 0, 0, 0, 1, 1, 0, 0), (1, 0, 0, 1, 1, 0, 0, 0)), -- Turn Left (head on)
-            ((0, 0, 1, 0, 0, 1, 1, 0), (0, 0, 1, 1, 0, 0, 1, 0)), -- Turn Left (right side collison)
-            ((1, 0, 0, 1, 1, 1, 0, 1), (1, 0, 1, 1, 1, 0, 0, 1)), -- Turn Right
-            ((0, 0, 1, 1, 0, 1, 1, 1), (1, 1, 0, 1, 1, 1, 0, 0)) -- Toggle Memory
-          ]
+data LHS_Template = LHS {lhs_head :: VN, lhs_body :: Body WB}
+data Body a = Body {atL :: a, atA :: a, atR :: a}
+data RHS_Template = RHS {rhs_head :: LAR, rhs_body :: Body WB}
 
--- findHeads = (\ pos -> readTemplateFromTorus )
+lhs `readLhs` lar = (lhs_body lhs) `readBody` lar
+
+readBody :: Body a -> LAR -> a
+body `readBody` L = atL body
+body `readBody` A = atA body
+body `readBody` R = atR body
+
+findHeadCells :: TorusZipper (Cell Bool) -> [((Int, Int), VN)]
+findHeadCells tz = 
+  do
+    pos <- rangeT tz
+    let t = readTemplate (tz `readTemplateFromTorus` pos)
+    vn <- [N, E, S, W]
+    guard (t Inside vn == False && t Outside vn == True)
+    pure (pos, vn)
+    
+lhz_base :: [(Body WB, RHS_Template)]
+lhz_base =
+  [ (Body Z Z Z, RHS A (Body Z Z Z)) -- move forward
+  , (Body Z F Z, RHS R (Body Z Z F)) -- turn Right
+  , (Body Z Z F, RHS L (Body Z F Z)) -- turn Left (aka co-Turn Right) 
+  , (Body F F Z, RHS A (Body F F Z)) -- toggle memory
+  ]
+
+toCell :: (VN -> a) -> Cell a
+toCell f = cell (f N) (f E) (f S) (f W)
+
+rotate_clockwise :: VN -> VN
+rotate_clockwise N = E 
+rotate_clockwise E = S 
+rotate_clockwise S = W 
+rotate_clockwise W = N 
+
+rotate_lar :: LAR -> VN -> VN
+rotate_lar L = rotate_clockwise 
+rotate_lar A = inv 
+rotate_lar R = rotate_clockwise . rotate_clockwise . rotate_clockwise
+
+vn_diff :: VN -> VN -> Maybe LAR
+vn_diff src tgt = M.lookup (src, tgt) vn_diff_map
+
+vn_diff_map :: Map (VN, VN) LAR
+vn_diff_map = M.fromList $
+  do
+    src <- [N, E, S, W]
+    lar <- [L, A, R]
+    pure ((src, lar `rotate_lar` src), lar)
+
+lhs_to_template :: LHS_Template -> Template Bool
+lhs_to_template LHS {..} =
+  template (toCell inside) (toCell outside)
+    where
+      -- the inside is filled where the template is F
+      inside vn = ((lhs_body `readBody`) <$> (lhs_head `vn_diff` vn)) == Just F
+      outside vn = (lhs_head == vn) || inside vn -- the outside is also filled in at the head
+
+rhs_to_template :: VN -> RHS_Template -> Template Bool
+rhs_to_template old_head RHS{..} = 
+  template (toCell inside) (toCell outside)
+    where
+      new_head :: VN
+      new_head = rhs_head `rotate_lar` old_head
+      -- the outside is filled only where the template is F
+      outside, inside :: VN -> Bool
+      outside vn = ((rhs_body `readBody`) <$> (new_head `vn_diff` vn)) == Just F
+      -- the inside also filled in at the head the head
+      inside vn = (new_head == vn) || outside vn
+
+lhz_map :: Map (Template Bool) (Template Bool, LAR)
+lhz_map = M.fromList $
+  (do
+    vn <- all_vn
+    (l, r) <- lhz_base
+    pure (lhs_to_template (LHS vn l), (rhs_to_template vn r, rhs_head r))
+  )
+

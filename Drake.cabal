@@ -55,6 +55,7 @@ library
   import:              common-options
   hs-source-dirs:      src
   build-depends:       comonad
+                     , array
                      , gloss
   exposed-modules:     Drake
                      , Draw

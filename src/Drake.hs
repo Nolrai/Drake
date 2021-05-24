@@ -20,6 +20,7 @@ module Drake
     read2d,
     write2d,
     mkTorus,
+    rangeT,
   )
 where
 
@@ -28,6 +29,7 @@ import Data.Vector as V
 import qualified Data.Vector.Mutable as MV
 -- import System.Random
 import Text.Show as S
+import Data.Array (range)
 
 projectName :: String
 projectName = "Drake"
@@ -56,6 +58,9 @@ data RingZipper a = RingZipper {front :: Int, vector :: V.Vector a}
 
 data TorusZipper a = TorusZipper {frontT :: (Int, Int), widthT :: Int, vectorT :: V.Vector a}
   deriving stock (Show, Read, Eq)
+
+rangeT :: TorusZipper a -> [(Int, Int)]
+rangeT tz = curry range (0,0) (widthT tz, V.length (vectorT tz) `div` widthT tz)
 
 mkTorus :: Int -> V.Vector a -> TorusZipper a
 mkTorus w v = TorusZipper {frontT = (0, 0), widthT = w, vectorT = v}
