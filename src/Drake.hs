@@ -5,6 +5,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 -- |
 -- Copyright: (c) 2021 Chris A. Upshaw
@@ -24,11 +25,25 @@ module Drake
   )
 where
 
-import Control.Comonad
+import Relude
+    ( fst,
+      snd,
+      ($),
+      Eq,
+      Integral(mod, div),
+      Functor(fmap),
+      Num((*), (+)),
+      Read,
+      Show,
+      Int,
+      curry,
+      String )
+import Control.Comonad ( Comonad(extract, duplicate) )
 import Data.Vector as V
+    ( (!), generate, head, length, modify, Vector )
 import qualified Data.Vector.Mutable as MV
 -- import System.Random
-import Text.Show as S
+import Text.Show as S ( Show(show) )
 import Data.Array (range)
 
 projectName :: String
