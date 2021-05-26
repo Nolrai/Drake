@@ -4,8 +4,8 @@
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 -- |
 -- Copyright: (c) 2021 Chris A. Upshaw
@@ -15,8 +15,8 @@
 -- See README for more info
 module Drake
   ( projectName,
-    RingZipper,
-    TorusZipper,
+    RingZipper (..),
+    TorusZipper (..),
     read,
     read2d,
     write2d,
@@ -25,26 +25,34 @@ module Drake
   )
 where
 
-import Relude
-    ( fst,
-      snd,
-      ($),
-      Eq,
-      Integral(mod, div),
-      Functor(fmap),
-      Num((*), (+)),
-      Read,
-      Show,
-      Int,
-      curry,
-      String )
-import Control.Comonad ( Comonad(extract, duplicate) )
-import Data.Vector as V
-    ( (!), generate, head, length, modify, Vector )
-import qualified Data.Vector.Mutable as MV
+import Control.Comonad (Comonad (duplicate, extract))
 -- import System.Random
-import Text.Show as S ( Show(show) )
+
 import Data.Array (range)
+import Data.Vector as V
+  ( Vector,
+    generate,
+    head,
+    length,
+    modify,
+    (!),
+  )
+import qualified Data.Vector.Mutable as MV
+import Relude
+  ( Eq,
+    Functor (fmap),
+    Int,
+    Integral (div, mod),
+    Num ((*), (+)),
+    Read,
+    Show,
+    String,
+    curry,
+    fst,
+    snd,
+    ($),
+  )
+import Text.Show as S (Show (show))
 
 projectName :: String
 projectName = "Drake"
@@ -75,7 +83,7 @@ data TorusZipper a = TorusZipper {frontT :: (Int, Int), widthT :: Int, vectorT :
   deriving stock (Show, Read, Eq)
 
 rangeT :: TorusZipper a -> [(Int, Int)]
-rangeT tz = curry range (0,0) (widthT tz, V.length (vectorT tz) `div` widthT tz)
+rangeT tz = curry range (0, 0) (widthT tz, V.length (vectorT tz) `div` widthT tz)
 
 mkTorus :: Int -> V.Vector a -> TorusZipper a
 mkTorus w v = TorusZipper {frontT = (0, 0), widthT = w, vectorT = v}
@@ -90,7 +98,7 @@ read2d :: TorusZipper a -> (Int, Int) -> a
 tz `read2d` p = vectorT tz ! (tz `read2dAux` p)
 
 write2d :: TorusZipper a -> (Int, Int) -> a -> TorusZipper a
-write2d t@TorusZipper {..} pos value = t{vectorT = V.modify (\v -> MV.write v (t `read2dAux` pos) value) vectorT}
+write2d t@TorusZipper {..} pos value = t {vectorT = V.modify (\v -> MV.write v (t `read2dAux` pos) value) vectorT}
 
 instance Comonad TorusZipper where
   extract TorusZipper {..} = V.head vectorT
