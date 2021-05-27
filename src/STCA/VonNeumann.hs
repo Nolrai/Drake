@@ -3,7 +3,7 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module STCA.VonNeumann where
+module STCA.VonNeumann (VonNeumann (..), allVonNeuman, inv, offset, rotateClockwise) where
 
 import Relude (Enum, Eq, Num ((+), (-)), Ord, Read, Show)
 

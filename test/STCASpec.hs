@@ -8,10 +8,10 @@ where
 import Control.Comonad ()
 import Data.Text ()
 import Drake ()
-import Prelude
 import Test.Hspec
 import Test.Hspec.Golden ()
 import Test.QuickCheck ()
+import Prelude
 
 spec :: Spec
-spec = undefined
+spec = pure ()
