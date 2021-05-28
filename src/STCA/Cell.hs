@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE StrictData #-}
@@ -7,20 +8,20 @@
 module STCA.Cell (Cell (Cell), cell, toCell, subcell) where
 
 import Control.Lens
-import Relude (Eq, Functor, Ord, Read, Show)
+import Relude (Eq, Functor, Generic, Ord, Read, Show)
 import STCA.VonNeumann (VonNeumann (..))
 
 {-# ANN module "HLint: ignore Use newtype instead of data" #-}
 
 data Cell a = Cell {-# UNPACK #-} !(a, a, a, a)
-  deriving stock (Ord, Eq, Read, Functor, Show)
+  deriving stock (Ord, Eq, Read, Functor, Show, Generic)
 
 cell :: a -> a -> a -> a -> Cell a
 cell n e s w = Cell (n, e, s, w)
 
 writeCell_ :: Cell a -> VonNeumann -> a -> Cell a
-writeCell_ (Cell (n, e, s, w)) nv v =
-  case nv of
+writeCell_ (Cell (n, e, s, w)) vn v =
+  case vn of
     N -> Cell (v, e, s, w)
     E -> Cell (n, v, s, w)
     S -> Cell (n, e, v, w)

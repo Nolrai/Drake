@@ -1,20 +1,22 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 module STCA.CellSpec
   ( spec,
   )
 where
 
-import STCA.Cell (Cell(Cell), cell, subcell, toCell)
-import Control.Lens
-import Data.Text ()
-import Test.Hspec
-import Test.Hspec.Golden ()
-import Test.QuickCheck (Arbitrary(..), property)
-import Prelude
-import Control.Lens.Properties
+import Control.Lens (Lens', from, (^.))
+import Control.Lens.Properties (isLens, isSetter, isTraversal)
+import STCA.Cell (Cell (Cell), cell, subcell, toCell)
 import STCA.VonNeumann (VonNeumann)
+import STCA.VonNeumannSpec ()
+import Test.Hspec (Spec, describe, it, shouldBe)
+import Test.QuickCheck (Arbitrary (..), CoArbitrary, Function, property)
+import Prelude
+
+-- instance of the Arbitrary typeclass for VonNeumann .
 
 subcell' :: VonNeumann -> Lens' (Cell Bool) Bool
 subcell' = subcell
@@ -22,14 +24,21 @@ subcell' = subcell
 spec :: Spec
 spec =
   describe "Cell" $ do
-    describe "toCell" $
-      it "is an iso" . property $ isIso toCell
+    describe "toCell is an iso:" $ do
+      it "cell to function to cell cancels" . property $
+        \(c :: Cell Int) -> c ^. (from toCell . toCell) `shouldBe` c
+      it "to function to cell to function cancels" . property $
+        \(f :: VonNeumann -> Int) -> f ^. (toCell . from toCell) `shouldBe` f
     describe "subcell" $ do
-      it "is an setter" . property $ \ nv -> isSetter $ subcell' nv
-      it "is an traversal" . property $ \ nv -> isTraversal $ subcell' nv
-      it "is an lens" . property $ \ nv -> isLens $ subcell' nv
-      
+      it "is an setter" . property $ \vn -> isSetter $ subcell' vn
+      it "is an traversal" . property $ \vn -> isTraversal $ subcell' vn
+      it "is an lens" . property $ \vn -> isLens $ subcell' vn
+
 instance Arbitrary a => Arbitrary (Cell a) where
   arbitrary = cell <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
-  shrink (Cell (n, e, s, w)) = 
+  shrink (Cell (n, e, s, w)) =
     drop 1 $ cell <$> n : shrink n <*> e : shrink e <*> s : shrink s <*> w : shrink w
+
+instance Function a => Function (Cell a)
+
+instance CoArbitrary a => CoArbitrary (Cell a)

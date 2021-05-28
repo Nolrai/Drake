@@ -8,11 +8,13 @@ module Main
 where
 
 -- import Data.Map (keysSet)
+
+import Control.Lens ((^.))
 import Data.Set as S (singleton)
 import Data.Text.IO (hPutStrLn)
 import qualified Data.Vector as V
 import Debug.Trace (traceIO)
-import Drake (Torus)
+import Drake (Torus (..))
 import Draw (Draw (..))
 import Graphics.Gloss.Interface.Environment (getScreenSize)
 import Graphics.Gloss.Interface.IO.Game as G
@@ -61,12 +63,12 @@ import Relude as R
     (<$>),
     (<>),
   )
-import STCA (Cell, GreaterCell, RedBlack (..), VonNeumann (..), cell, template, toCell, toggleCellOnTorus)
+import STCA (Cell, GreaterCell, RedBlack (..), VonNeumann (..), cell, greaterCell, toCell, toggleCellOnTorus)
 import System.Environment (getArgs)
 import System.Random.Stateful (getStdGen, randomIO)
 
 blackGreaterCell :: GreaterCell RedBlack
-blackGreaterCell = template (toCell (const Black)) (toCell (const Black))
+blackGreaterCell = (const Black ^. toCell, const Black ^. toCell) ^. greaterCell
 
 main :: IO ()
 main =
@@ -137,7 +139,7 @@ blankTorus :: ((Int, Int), Torus (Cell RedBlack))
 blankTorus = (defaultSize, Torus (fst defaultSize) underlyingVector)
   where
     underlyingVector = V.replicate (uncurry (*) defaultSize) blankCell
-    blankCell = toCell (const Red)
+    blankCell = (const Red) ^. toCell
 
 mkRandomTorus :: IO ((Int, Int), Torus (Cell RedBlack))
 mkRandomTorus =

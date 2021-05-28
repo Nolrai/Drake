@@ -14,8 +14,8 @@ module STCA.GreaterCell
   )
 where
 
-import Control.Lens (Iso', Lens', iso, lens, (^.))
-import Relude (Eq, Functor, Ord, Read, Show)
+import Control.Lens (Iso', Lens', iso, lens)
+import Relude (Eq, Functor, Ord, Read, Show, (.))
 import STCA.Cell (Cell, subcell)
 import STCA.VonNeumann (VonNeumann (..))
 
@@ -36,6 +36,6 @@ inside = lens (\(GreaterCell (i, _)) -> i) (\(GreaterCell (_, o)) i -> GreaterCe
 outside :: Lens' (GreaterCell a) (Cell a)
 outside = lens (\(GreaterCell (_, o)) -> o) (\(GreaterCell (i, _)) o -> GreaterCell (i, o))
 
-readGreaterCell :: GreaterCell a -> InsideOutside -> VonNeumann -> a
-readGreaterCell (GreaterCell (i, _)) Inside vn = i ^. subcell vn
-readGreaterCell (GreaterCell (_, o)) Outside vn = o ^. subcell vn
+greaterToSubcell :: InsideOutside -> VonNeumann -> Lens' (GreaterCell a) a
+greaterToSubcell Inside vn = subcell vn . inside
+greaterToSubcell Outside vn = subcell vn . outside

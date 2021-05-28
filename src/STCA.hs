@@ -80,7 +80,7 @@ greaterCellFromTorus pos = splitLens readInside readOutside . greaterCell
     cellOfLenses :: Cell (ALens' (Torus (Cell RedBlack)) RedBlack)
     cellOfLenses = fromVN ^. toCell
     fromVN :: VonNeumann -> ALens' (Torus (Cell RedBlack)) RedBlack
-    fromVN nv = read2d (offset pos (inv nv)) . subcell nv
+    fromVN vn = read2d (offset pos (inv vn)) . subcell vn
 
 splitLens :: forall t a b. ALens' t a -> ALens' t b -> Lens' t (a, b)
 splitLens lens1 lens2 = lens get put
