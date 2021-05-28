@@ -1,3 +1,4 @@
+{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -7,15 +8,16 @@ module STCA
     offset,
     Cell (),
     cell,
-    readCell,
-    writeCell,
+    subcell,
     toCell,
-    writeCellOnTorus,
+    subCellOfTorus,
     toggleCellOnTorus,
-    GreaterCell (),
-    template,
-    readTemplate,
-    readTemplateFromTorus,
+    GreaterCell,
+    inside,
+    outside,
+    greaterCell,
+    readGreaterCell,
+    greaterCellFromTorus,
     lhzMap,
     findHeadCells,
     RedBlack (..),
@@ -24,8 +26,11 @@ module STCA
 where
 
 -- import Data.Set as Set
+
+import Control.Lens hiding (inside, outside)
 import Data.Map as M (fromList)
-import Drake (TorusZipper, rangeT, read2d, write2d)
+import Data.Vector as V
+import Drake (Torus, rangeT, read2d)
 import Relude
   ( Applicative (pure),
     Eq ((==)),
@@ -34,14 +39,16 @@ import Relude
     guard,
     maybe,
     (&&),
-    (<$>),
+    (.),
   )
-import STCA.Cell (Cell, cell, readCell, toCell, writeCell)
+import STCA.Cell (Cell (Cell), cell, subcell, toCell)
 import STCA.GreaterCell
   ( GreaterCell (..),
     InsideOutside (Inside, Outside),
-    readTemplate,
-    template,
+    greaterCell,
+    inside,
+    outside,
+    readGreaterCell,
   )
 import STCA.Rules
   ( LAR,
@@ -51,53 +58,72 @@ import STCA.Rules
     lhzBase,
     readBody,
     rotateLar,
+    toggle,
     vnDiff,
   )
 import STCA.VonNeumann (VonNeumann (..), allVonNeuman, inv, offset)
 
-writeCellOnTorus :: (Int, Int) -> VonNeumann -> a -> TorusZipper (Cell a) -> TorusZipper (Cell a)
-writeCellOnTorus pos vn value tz = write2d tz pos (writeCell (tz `read2d` pos) vn value)
+subCellOfTorus :: (Int, Int) -> VonNeumann -> Lens' (Torus (Cell a)) a
+subCellOfTorus pos vn = read2d pos . subcell vn
 
-toggleCellOnTorus :: (Int, Int) -> VonNeumann -> TorusZipper (Cell RedBlack) -> TorusZipper (Cell RedBlack)
-toggleCellOnTorus pos vn tz =
-  let targetCell = tz `read2d` pos
-   in write2d tz pos (writeCell targetCell vn (targetCell `readCell` vn))
+toggleCellOnTorus :: (Int, Int) -> VonNeumann -> Torus (Cell RedBlack) -> Torus (Cell RedBlack)
+toggleCellOnTorus pos vn = over (subCellOfTorus pos vn) toggle
 
-readTemplateFromTorus :: forall a. TorusZipper (Cell a) -> (Int, Int) -> GreaterCell a
-readTemplateFromTorus tz pos =
-  GreaterCell (tz `read2d` pos, readOffset <$> cell N E S W)
+-- A greaterCell is a cell and its sourounding sub-cells
+greaterCellFromTorus :: (Int, Int) -> Lens' (Torus (Cell RedBlack)) (GreaterCell RedBlack)
+greaterCellFromTorus pos = splitLens readInside readOutside . greaterCell
   where
-    readOffset :: VonNeumann -> a
-    readOffset vn = (tz `read2d` offset pos vn) `readCell` inv vn
+    readInside :: ALens' (Torus (Cell RedBlack)) (Cell RedBlack)
+    readInside = read2d pos
+    readOutside :: ALens' (Torus (Cell RedBlack)) (Cell RedBlack)
+    readOutside = sequenceL cellOfLenses
+    cellOfLenses :: Cell (ALens' (Torus (Cell RedBlack)) RedBlack)
+    cellOfLenses = fromVN ^. toCell
+    fromVN :: VonNeumann -> ALens' (Torus (Cell RedBlack)) RedBlack
+    fromVN nv = read2d (offset pos (inv nv)) . subcell nv
 
-findHeadCells :: TorusZipper (Cell RedBlack) -> [((Int, Int), VonNeumann)]
+splitLens :: forall t a b. ALens' t a -> ALens' t b -> Lens' t (a, b)
+splitLens lens1 lens2 = lens get put
+  where
+    get t = (t ^# lens1, t ^# lens2)
+    put t (v1, v2) = storing lens2 v2 (storing lens1 v1 t)
+
+sequenceL :: forall t a. Cell (ALens' t a) -> ALens' t (Cell a)
+sequenceL (Cell (n, e, s, w)) = lens get put
+  where
+    get :: t -> Cell a
+    get t = Cell (t ^. cloneLens n, t ^. cloneLens e, t ^. cloneLens s, t ^. cloneLens w)
+    put t (Cell (n', e', s', w')) = set (cloneLens n) n' (set (cloneLens e) e' (set (cloneLens s) s' (set (cloneLens w) w' t)))
+
+findHeadCells :: Torus (Cell RedBlack) -> Vector ((Int, Int), VonNeumann)
 findHeadCells tz =
   do
     pos <- rangeT tz
-    let t = readTemplate (tz `readTemplateFromTorus` pos)
-    vn <- [N, E, S, W]
+    let t = readGreaterCell (tz ^. greaterCellFromTorus pos)
+    vn <- V.fromList allVonNeuman
     guard (t Inside vn == Red && t Outside vn == Black)
     pure (pos, vn)
 
 lhsToTemplate :: LhsTemplate -> GreaterCell RedBlack
 lhsToTemplate LHS {..} =
-  template (toCell inside) (toCell outside)
+  (inside' ^. toCell, outside' ^. toCell) ^. greaterCell
   where
+    inside', outside' :: VonNeumann -> RedBlack
     -- the inside is filled where the template is Black
-    inside vn = maybe Red (lhsBody `readBody`) (lhsHead `vnDiff` vn)
-    outside vn = if lhsHead == vn then Black else inside vn -- the outside is also filled in at the head
+    inside' vn = maybe Red (lhsBody `readBody`) (lhsHead `vnDiff` vn)
+    outside' vn = if lhsHead == vn then Black else inside' vn -- the outside is also filled in at the head
 
 rhsToTemplate :: VonNeumann -> RhsTemplate -> GreaterCell RedBlack
 rhsToTemplate old_head RHS {..} =
-  template (toCell inside) (toCell outside)
+  (inside' ^. toCell, outside' ^. toCell) ^. greaterCell
   where
     new_head :: VonNeumann
     new_head = rhs_head `rotateLar` old_head
     -- the outside is filled only where the template is Black
-    outside, inside :: VonNeumann -> RedBlack
-    outside vn = maybe Red (rhs_body `readBody`) (new_head `vnDiff` vn)
+    outside', inside' :: VonNeumann -> RedBlack
+    outside' vn = maybe Red (rhs_body `readBody`) (new_head `vnDiff` vn)
     -- the inside also filled in at the head the head
-    inside vn = if new_head == vn then Black else outside vn
+    inside' vn = if new_head == vn then Black else outside' vn
 
 lhzMap :: Map (GreaterCell RedBlack) (GreaterCell RedBlack, LAR)
 lhzMap =

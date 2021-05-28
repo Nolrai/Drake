@@ -1,6 +1,7 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE Rank2Types #-}
 
 module DrakeSpec
   ( spec,
@@ -11,53 +12,46 @@ import Control.Comonad
   ( Comonad (duplicate, extract),
     Functor (fmap),
   )
-import Data.Vector as V (replicateM)
-import Drake (RingZipper (..), TorusZipper (..), rangeMod)
-import Test.Hspec (Spec, describe, it, shouldBe, focus)
+import Data.Vector as V (replicateM, take)
+import Drake (Torus (..), rangeMod, rangeDivMod, torusSize, read2d)
+import Control.Lens
+import Control.Lens.Properties
+import Test.Hspec (Spec, describe, focus, it, shouldBe)
 import Test.Hspec.Golden ()
 import Test.QuickCheck
-  ( Arbitrary (arbitrary),
-    Positive (Positive),
+  ( Arbitrary (arbitrary, shrink),
     NonZero (NonZero),
+    Positive (Positive),
     Testable (property),
   )
-import Prelude (Bool, Int, pure, ($), (*), (.), div, (+), (==), (>=))
+import Prelude (Bool, Int, div, pure, ($), (*), (+), (.), (==), (>=))
+
+-- specialize to Bool
+read2d' :: (Int, Int) -> Lens' (Torus Bool) Bool
+read2d' = read2d
 
 spec :: Spec
 spec = do
   describe "rangeMod" $ do
     it "produces the same sign as y" . property $
-      \ (x :: Int, NonZero (y :: Int)) -> (x `rangeMod` y) * y >= 0
-    it "works with div (x `div` y)*y + (x `rangeMod` y) == x" . property $ 
-      \ (x :: Int, NonZero (y :: Int)) -> (x `div` y)*y + (x `rangeMod` y) == x
-  describe "RingZipper" $ do
-    it "extract . duplicate = id" . property $
-      \(x :: RingZipper Bool) -> extract (duplicate x) `shouldBe` x
-    it "fmap extract . duplicate = id" . property $
-      \(x :: RingZipper Bool) -> fmap extract (duplicate x) `shouldBe` x
-    it "duplicate . duplicate = fmap duplicate . duplicate" . property $
-      \(x :: RingZipper Bool) -> duplicate (duplicate x) `shouldBe` fmap duplicate (duplicate x)
-  describe "TorusZipper" $ do
-    it "extract . duplicate = id" . property $
-      \(x :: TorusZipper Bool) -> extract (duplicate x) `shouldBe` x
-    it "fmap extract . duplicate = id" . property $
-      \(x :: TorusZipper Bool) -> fmap extract (duplicate x) `shouldBe` x
-    it "duplicate . duplicate = fmap duplicate . duplicate" . property $
-      \(x :: TorusZipper Bool) -> duplicate (duplicate x) `shouldBe` fmap duplicate (duplicate x)
+      \(x :: Int, NonZero (y :: Int)) -> (x `rangeMod` y) * y >= 0
+    it "forms an iso with unDivRangeMod" . property $ 
+      \ (NonZero (y :: Int)) -> isIso (rangeDivMod y)
+  describe "read2d" $ do
+    it "is a setter" . property $ \ p -> isSetter (read2d' p)
+    it "is a traversal" . property $ \ p -> isTraversal (read2d' p)
+    it "is a lens" . property $ \ p -> isLens (read2d' p)
 
-instance Arbitrary a => Arbitrary (RingZipper a) where
-  arbitrary = 
-    do
-      front <- arbitrary
-      (Positive (width :: Int)) <- arbitrary
-      vector <- V.replicateM width arbitrary
-      pure RingZipper {front = front, vector = vector}
-
-instance Arbitrary a => Arbitrary (TorusZipper a) where
+instance Arbitrary a => Arbitrary (Torus a) where
   arbitrary =
     do
-      frontT <- arbitrary
       (Positive (widthT :: Int)) <- arbitrary
       (Positive hight) <- arbitrary
       vectorT <- V.replicateM (widthT * hight) arbitrary
-      pure TorusZipper {..}
+      pure Torus {..}
+  shrink t@Torus{vectorT = v} =
+    do
+      let (w, h) = torusSize t
+      (Positive widthT, Positive h') <- shrink (Positive w, Positive h)
+      let vectorT = V.take (widthT * h') v
+      pure Torus {..}

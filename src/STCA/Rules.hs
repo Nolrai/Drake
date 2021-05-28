@@ -10,6 +10,7 @@ module STCA.Rules
     LAR,
     LhsTemplate (..),
     RedBlack (..),
+    toggle,
   )
 where
 
@@ -37,6 +38,10 @@ data RedBlack
   = Red -- Empty
   | Black -- Full
   deriving stock (Eq, Ord, Show, Read)
+
+toggle :: RedBlack -> RedBlack
+toggle Red = Black
+toggle Black = Black
 
 data LhsTemplate = LHS {lhsHead :: VonNeumann, lhsBody :: Body RedBlack}
 

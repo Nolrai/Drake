@@ -1,10 +1,12 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module STCA.Cell (Cell, cell, readCell, toCell, writeCell) where
+module STCA.Cell (Cell (Cell), cell, toCell, subcell) where
 
+import Control.Lens
 import Relude (Eq, Functor, Ord, Read, Show)
 import STCA.VonNeumann (VonNeumann (..))
 
@@ -16,19 +18,25 @@ data Cell a = Cell {-# UNPACK #-} !(a, a, a, a)
 cell :: a -> a -> a -> a -> Cell a
 cell n e s w = Cell (n, e, s, w)
 
-writeCell :: Cell a -> VonNeumann -> a -> Cell a
-writeCell (Cell (n, e, s, w)) nv v =
+writeCell_ :: Cell a -> VonNeumann -> a -> Cell a
+writeCell_ (Cell (n, e, s, w)) nv v =
   case nv of
     N -> Cell (v, e, s, w)
     E -> Cell (n, v, s, w)
     S -> Cell (n, e, v, w)
     W -> Cell (n, e, s, v)
 
-readCell :: Cell a -> VonNeumann -> a
-readCell (Cell (n, _, _, _)) N = n
-readCell (Cell (_, e, _, _)) E = e
-readCell (Cell (_, _, s, _)) S = s
-readCell (Cell (_, _, _, w)) W = w
+readCell_ :: Cell a -> VonNeumann -> a
+readCell_ (Cell (n, _, _, _)) N = n
+readCell_ (Cell (_, e, _, _)) E = e
+readCell_ (Cell (_, _, s, _)) S = s
+readCell_ (Cell (_, _, _, w)) W = w
 
-toCell :: (VonNeumann -> a) -> Cell a
-toCell f = cell (f N) (f E) (f S) (f W)
+subcell :: VonNeumann -> Lens' (Cell a) a
+subcell vn = lens (`readCell_` vn) (`writeCell_` vn)
+
+toCell_ :: (VonNeumann -> a) -> Cell a
+toCell_ f = cell (f N) (f E) (f S) (f W)
+
+toCell :: Iso' (VonNeumann -> a) (Cell a)
+toCell = iso toCell_ (\c vn -> c ^. subcell vn)

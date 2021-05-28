@@ -12,7 +12,7 @@ import Data.Set as S (singleton)
 import Data.Text.IO (hPutStrLn)
 import qualified Data.Vector as V
 import Debug.Trace (traceIO)
-import Drake (TorusZipper, mkTorus)
+import Drake (Torus)
 import Draw (Draw (..))
 import Graphics.Gloss.Interface.Environment (getScreenSize)
 import Graphics.Gloss.Interface.IO.Game as G
@@ -87,7 +87,7 @@ main =
     runGloss start drawInfo onEditEvent
 
 runGloss :: forall world drawInfo. Draw world drawInfo => world -> drawInfo -> (drawInfo -> Event -> world -> IO world) -> IO ()
--- runGloss :: TorusZipper (Cell RedBlack) -> (Set (GreaterCell RedBlack),  (Int, Int), Float) -> ((Set (GreaterCell RedBlack),  (Int, Int), Float) -> Even -> TorusZipper (Cell RedBlack) -> IO world) -> IO ()
+-- runGloss :: Torus (Cell RedBlack) -> (Set (GreaterCell RedBlack),  (Int, Int), Float) -> ((Set (GreaterCell RedBlack),  (Int, Int), Float) -> Even -> Torus (Cell RedBlack) -> IO world) -> IO ()
 runGloss start drawInfo onEvent = playIO FullScreen blue 0 start onDraw (onEvent drawInfo) trackUpdates
   where
     trackUpdates :: Float -> world -> IO world
@@ -95,7 +95,7 @@ runGloss start drawInfo onEvent = playIO FullScreen blue 0 start onDraw (onEvent
     onDraw :: world -> IO G.Picture
     onDraw state = pure $ draw drawInfo state
 
-onEditEvent :: (a, b, Float) -> Event -> TorusZipper (Cell RedBlack) -> IO (TorusZipper (Cell RedBlack))
+onEditEvent :: (a, b, Float) -> Event -> Torus (Cell RedBlack) -> IO (Torus (Cell RedBlack))
 onEditEvent (_highlight, _matrixSize, tileSize) event world =
   traceIO ("Event: " <> show event)
     >> case event of
@@ -122,7 +122,7 @@ toIndex tileSize (posX', posY') = ((tilesX, tilesY), vn)
         (False, False) -> S
         (True, False) -> W
 
-readMatFile :: FilePath -> IO ((Int, Int), TorusZipper (Cell RedBlack))
+readMatFile :: FilePath -> IO ((Int, Int), Torus (Cell RedBlack))
 readMatFile filename =
   do
     x <- R.readEither <$> readFile filename
@@ -133,19 +133,19 @@ readMatFile filename =
 defaultSize :: (Int, Int)
 defaultSize = (20, 20)
 
-blankTorus :: ((Int, Int), TorusZipper (Cell RedBlack))
-blankTorus = (defaultSize, mkTorus (fst defaultSize) underlyingVector)
+blankTorus :: ((Int, Int), Torus (Cell RedBlack))
+blankTorus = (defaultSize, Torus (fst defaultSize) underlyingVector)
   where
     underlyingVector = V.replicate (uncurry (*) defaultSize) blankCell
     blankCell = toCell (const Red)
 
-mkRandomTorus :: IO ((Int, Int), TorusZipper (Cell RedBlack))
+mkRandomTorus :: IO ((Int, Int), Torus (Cell RedBlack))
 mkRandomTorus =
   do
     g <- getStdGen
     hPutStrLn stderr $ "StdGen: " <> show g
     v <- mkCell `V.mapM` V.replicate (uncurry (*) defaultSize) ()
-    pure (defaultSize, mkTorus (fst defaultSize) v)
+    pure (defaultSize, Torus (fst defaultSize) v)
 
 mkCell :: () -> IO (Cell RedBlack)
 mkCell () = cell <$> redBlackIO <*> redBlackIO <*> redBlackIO <*> redBlackIO

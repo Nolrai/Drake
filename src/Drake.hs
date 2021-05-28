@@ -2,7 +2,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
@@ -15,25 +17,22 @@
 -- See README for more info
 module Drake
   ( projectName,
-    RingZipper (..),
-    TorusZipper (..),
-    read,
+    Torus (..),
     read2d,
-    write2d,
-    mkTorus,
     rangeT,
     rangeMod,
+    rangeDivMod,
+    torusSize,
   )
 where
 
-import Control.Comonad (Comonad (duplicate, extract))
--- import System.Random
-
+import Control.Lens.Getter ((^.))
+import Control.Lens.Iso (Iso', iso)
+import Control.Lens.Lens (Lens', lens)
 import Data.Array (range)
 import Data.Vector as V
   ( Vector,
     generate,
-    head,
     length,
     modify,
     (!),
@@ -47,86 +46,62 @@ import Relude
     Read,
     Show,
     String,
-    mod,
-    div,
     and,
-    curry,
-    fst,
-    snd,
+    div,
+    mod,
     (&&),
-    (<$>),
     (<),
+    (<$>),
   )
 
 projectName :: String
 projectName = "Drake"
-
-instance Functor RingZipper where
-  fmap f RingZipper {..} = RingZipper {front = front, vector = fmap f vector}
 
 rangeMod :: Int -> Int -> Int
 a `rangeMod` b = if x * b < 0 then x + b else x
   where
     x = a `mod` b
 
-read :: RingZipper a -> Int -> a
-RingZipper {..} `read` i = vector ! (i + front `rangeMod` V.length vector)
+rangeDivMod_ :: Int -> Int -> (Int, Int)
+a `rangeDivMod_` b = (a `div` b, a `rangeMod` b)
 
-instance Comonad RingZipper where
-  extract RingZipper {..} = V.head vector
-  duplicate r@RingZipper {..} =
-    RingZipper
-      { front = front,
-        vector = V.generate s (\i -> r {front = (i + front) `rangeMod` s})
-      }
-    where
-      s = V.length vector
+unRangeDivMod_ :: (Int, Int) -> Int -> Int
+(d, m) `unRangeDivMod_` y = d * y + m
 
-data RingZipper a = RingZipper {front :: Int, vector :: V.Vector a}
+rangeDivMod :: Int -> Iso' Int (Int, Int)
+rangeDivMod b = iso (`rangeDivMod_` b) (`unRangeDivMod_` b)
+
+data Torus a = Torus {widthT :: Int, vectorT :: V.Vector a}
   deriving stock (Show, Read)
 
-data TorusZipper a = TorusZipper {frontT :: (Int, Int), widthT :: Int, vectorT :: V.Vector a}
-  deriving stock (Show, Read)
+rangeT :: Torus a -> Vector (Int, Int)
+rangeT tz = generate (V.length (vectorT tz)) (^. rangeDivMod (widthT tz))
 
-rangeT :: TorusZipper a -> [(Int, Int)]
-rangeT tz = curry range (0, 0) (widthT tz, V.length (vectorT tz) `div` widthT tz)
+instance Functor Torus where
+  fmap f t@Torus {vectorT} = t {vectorT = fmap f vectorT}
 
-mkTorus :: Int -> V.Vector a -> TorusZipper a
-mkTorus w v = TorusZipper {frontT = (0, 0), widthT = w, vectorT = v}
+read2dAux :: Torus a -> (Int, Int) -> Int
+Torus {..} `read2dAux` (i, j) = (i `rangeMod` widthT) + (j `rangeMod` (V.length vectorT `div` widthT)) * widthT
 
-instance Functor TorusZipper where
-  fmap f t@TorusZipper {vectorT} = t {vectorT = fmap f vectorT}
+read2d_ :: Torus a -> (Int, Int) -> a
+tz `read2d_` p = vectorT tz ! (tz `read2dAux` p)
 
-read2dAux :: TorusZipper a -> (Int, Int) -> Int
-TorusZipper {..} `read2dAux` (i, j) = ((i + fst frontT) `rangeMod` widthT) + ((j + snd frontT) `rangeMod` (V.length vectorT `div` widthT)) * widthT
+write2d_ :: Torus a -> (Int, Int) -> a -> Torus a
+write2d_ t@Torus {..} pos value = t {vectorT = V.modify (\v -> MV.write v (t `read2dAux` pos) value) vectorT}
 
-read2d :: TorusZipper a -> (Int, Int) -> a
-tz `read2d` p = vectorT tz ! (tz `read2dAux` p)
+read2d :: (Int, Int) -> Lens' (Torus a) a
+read2d pos = lens get put
+  where
+    get :: Torus a -> a
+    get = (`read2d_` pos)
+    put :: Torus a -> a -> Torus a
+    put = (`write2d_` pos)
 
-write2d :: TorusZipper a -> (Int, Int) -> a -> TorusZipper a
-write2d t@TorusZipper {..} pos value = t {vectorT = V.modify (\v -> MV.write v (t `read2dAux` pos) value) vectorT}
+torusSize :: Torus a -> (Int, Int)
+torusSize Torus {widthT, vectorT} = (widthT, V.length vectorT `div` widthT)
 
-instance Comonad TorusZipper where
-  extract TorusZipper {..} = V.head vectorT
-  duplicate t@TorusZipper {..} =
-    t {vectorT = V.generate s (\i -> t {frontT = f i})}
-    where
-      f i = (x i, y i)
-      x i = (i + fst frontT) `rangeMod` widthT
-      y i = ((i `div` widthT) + snd frontT) `rangeMod` (s `div` widthT)
-      s = V.length vectorT
-
-ringSize :: RingZipper a -> Int
-ringSize RingZipper {vector} = V.length vector
-
-torusSize :: TorusZipper a -> (Int, Int)
-torusSize TorusZipper {widthT, vectorT} = (widthT, V.length vectorT `div` widthT)
-
-instance Eq a => Eq (RingZipper a) where
-  l == r = ringSize l == ringSize r && and ((\n -> l `read` n == r `read` n) <$> [0 .. ringSize l - 1])
-
-instance Eq a => Eq (TorusZipper a) where
-  l == r = torusSize l == torusSize r && and ((\n -> l `read2d` n == r `read2d` n) <$> range ((0, 0), end))
+instance Eq a => Eq (Torus a) where
+  l == r = torusSize l == torusSize r && and ((\n -> l ^. read2d n == r ^. read2d n) <$> range ((0, 0), end))
     where
       end = (w -1, h -1)
       (w, h) = torusSize l
