@@ -16,7 +16,7 @@ module STCA
     inside,
     outside,
     greaterCell,
-    readGreaterCell,
+    greaterToSubcell,
     greaterCellFromTorus,
     lhzMap,
     findHeadCells,
@@ -43,21 +43,24 @@ import Relude
   )
 import STCA.Cell (Cell (Cell), cell, subcell, toCell)
 import STCA.GreaterCell
-  ( GreaterCell (..),
+  ( GreaterCell (),
     InsideOutside (Inside, Outside),
     greaterCell,
+    greaterToSubcell,
     inside,
     outside,
-    readGreaterCell,
   )
 import STCA.Rules
   ( LAR,
-    LhsTemplate (..),
+    LhsTemplate,
     RedBlack (..),
-    RhsTemplate (..),
+    RhsTemplate,
     lhzBase,
+    mkLHS,
     readBody,
     rotateLar,
+    toBody,
+    toHead,
     toggle,
     vnDiff,
   )
@@ -99,37 +102,38 @@ findHeadCells :: Torus (Cell RedBlack) -> Vector ((Int, Int), VonNeumann)
 findHeadCells tz =
   do
     pos <- rangeT tz
-    let t = readGreaterCell (tz ^. greaterCellFromTorus pos)
+    let t vn io = tz ^. greaterCellFromTorus pos . greaterToSubcell vn io
     vn <- V.fromList allVonNeumann
     guard (t Inside vn == Red && t Outside vn == Black)
     pure (pos, vn)
 
 lhsToTemplate :: LhsTemplate -> GreaterCell RedBlack
-lhsToTemplate LHS {..} =
+lhsToTemplate lhs =
   (inside' ^. toCell, outside' ^. toCell) ^. greaterCell
   where
     inside', outside' :: VonNeumann -> RedBlack
     -- the inside is filled where the template is Black
-    inside' vn = maybe Red (lhsBody `readBody`) (lhsHead `vnDiff` vn)
-    outside' vn = if lhsHead == vn then Black else inside' vn -- the outside is also filled in at the head
+    inside' vn = maybe Red (\lar -> lhs ^. toBody . readBody lar) ((lhs ^. toHead) `vnDiff` vn)
+    outside' vn = if lhs ^. toHead == vn then Black else inside' vn -- the outside is also filled in at the head
 
 rhsToTemplate :: VonNeumann -> RhsTemplate -> GreaterCell RedBlack
-rhsToTemplate old_head RHS {..} =
+rhsToTemplate old_head rhs =
   (inside' ^. toCell, outside' ^. toCell) ^. greaterCell
   where
     new_head :: VonNeumann
-    new_head = rhs_head `rotateLar` old_head
+    new_head = (rhs ^. toHead) `rotateLar` old_head
     -- the outside is filled only where the template is Black
     outside', inside' :: VonNeumann -> RedBlack
-    outside' vn = maybe Red (rhs_body `readBody`) (new_head `vnDiff` vn)
+    outside' vn = maybe Red (\lar -> rhs ^. toBody . readBody lar) (new_head `vnDiff` vn)
     -- the inside also filled in at the head the head
     inside' vn = if new_head == vn then Black else outside' vn
 
 lhzMap :: Map (GreaterCell RedBlack) (GreaterCell RedBlack, LAR)
-lhzMap =
-  M.fromList
-    ( do
-        vn <- allVonNeumann
-        (l, r) <- lhzBase
-        pure (lhsToTemplate (LHS vn l), (rhsToTemplate vn r, rhs_head r))
-    )
+lhzMap = M.fromList lhzList
+
+-- for testing
+lhzList :: [(GreaterCell RedBlack, (GreaterCell RedBlack, LAR))]
+lhzList = do
+  vn <- allVonNeumann
+  (l, r) <- lhzBase
+  pure (lhsToTemplate (mkLHS vn l), (rhsToTemplate vn r, r ^. toHead))

@@ -1,13 +1,14 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module STCA.GreaterCell
-  ( GreaterCell (..),
+  ( GreaterCell (),
     InsideOutside (Inside, Outside),
-    readGreaterCell,
+    greaterToSubcell,
     greaterCell,
     inside,
     outside,
@@ -15,14 +16,14 @@ module STCA.GreaterCell
 where
 
 import Control.Lens (Iso', Lens', iso, lens)
-import Relude (Eq, Functor, Ord, Read, Show, (.))
+import Relude (Eq, Functor, Generic, Ord, Read, Show, (.))
 import STCA.Cell (Cell, subcell)
 import STCA.VonNeumann (VonNeumann (..))
 
 {-# ANN module "HLint: ignore Use newtype instead of data" #-}
 
 data GreaterCell a = GreaterCell {-# UNPACK #-} !(Cell a, Cell a)
-  deriving stock (Ord, Eq, Functor)
+  deriving stock (Ord, Eq, Functor, Generic, Show, Read)
 
 greaterCell :: Iso' (Cell a, Cell a) (GreaterCell a)
 greaterCell = iso (\(i, o) -> GreaterCell (i, o)) (\(GreaterCell (i, o)) -> (i, o))
@@ -37,5 +38,5 @@ outside :: Lens' (GreaterCell a) (Cell a)
 outside = lens (\(GreaterCell (_, o)) -> o) (\(GreaterCell (i, _)) o -> GreaterCell (i, o))
 
 greaterToSubcell :: InsideOutside -> VonNeumann -> Lens' (GreaterCell a) a
-greaterToSubcell Inside vn = subcell vn . inside
-greaterToSubcell Outside vn = subcell vn . outside
+greaterToSubcell Inside vn = inside . subcell vn
+greaterToSubcell Outside vn = outside . subcell vn

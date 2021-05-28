@@ -1,4 +1,8 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module STCA.Rules
@@ -6,18 +10,25 @@ module STCA.Rules
     rotateLar,
     vnDiff,
     readBody,
-    RhsTemplate (..),
-    LAR,
-    LhsTemplate (..),
+    toBody,
+    toHead,
+    RhsTemplate (),
+    LAR (..),
+    LhsTemplate (),
+    mkLHS,
+    mkRHS,
     RedBlack (..),
     toggle,
+    Body (..),
   )
 where
 
+import Control.Lens
 import Data.Map as M (fromList, lookup)
 import Relude
   ( Applicative (pure),
     Eq,
+    Generic,
     Map,
     Maybe,
     Ord,
@@ -32,27 +43,40 @@ data LAR
   = L -- Left
   | A -- Across
   | R -- Right
-  deriving stock (Eq, Ord, Show, Read)
+  deriving stock (Eq, Ord, Show, Read, Generic)
 
 data RedBlack
   = Red -- Empty
   | Black -- Full
-  deriving stock (Eq, Ord, Show, Read)
+  deriving stock (Eq, Ord, Show, Read, Generic)
 
 toggle :: RedBlack -> RedBlack
 toggle Red = Black
-toggle Black = Black
+toggle Black = Red
 
-data LhsTemplate = LHS {lhsHead :: VonNeumann, lhsBody :: Body RedBlack}
+data Body a = Body {_atL :: a, _atA :: a, _atR :: a}
+  deriving stock (Eq, Ord, Show, Read, Generic)
 
-data Body a = Body {atL :: a, atA :: a, atR :: a}
+data LhsTemplate = LHS {_lhsHead :: VonNeumann, _lhsBody :: Body RedBlack}
+  deriving stock (Eq, Ord, Show, Read, Generic)
 
-data RhsTemplate = RHS {rhs_head :: LAR, rhs_body :: Body RedBlack}
+mkLHS :: VonNeumann -> Body RedBlack -> LhsTemplate
+mkLHS = LHS
 
-readBody :: Body a -> LAR -> a
-body `readBody` L = atL body
-body `readBody` A = atA body
-body `readBody` R = atR body
+data RhsTemplate = RHS {_rhsHead :: LAR, _rhsBody :: Body RedBlack}
+  deriving stock (Eq, Ord, Show, Read, Generic)
+
+mkRHS :: LAR -> Body RedBlack -> RhsTemplate
+mkRHS = RHS
+
+makeLenses ''Body
+makeLenses ''LhsTemplate
+makeLenses ''RhsTemplate
+
+readBody :: LAR -> Lens' (Body a) a
+readBody L = atL
+readBody A = atA
+readBody R = atR
 
 lhzBase :: [(Body RedBlack, RhsTemplate)]
 lhzBase =
@@ -77,3 +101,15 @@ vDiffMap = M.fromList $
     src <- [N, E, S, W]
     lar <- [L, A, R]
     pure ((src, lar `rotateLar` src), lar)
+
+class HeadBody a h b | a -> b, a -> h where
+  toBody :: Lens' a (Body b)
+  toHead :: Lens' a h
+
+instance HeadBody LhsTemplate VonNeumann RedBlack where
+  toBody = cloneLens lhsBody
+  toHead = cloneLens lhsHead
+
+instance HeadBody RhsTemplate LAR RedBlack where
+  toBody = cloneLens rhsBody
+  toHead = cloneLens rhsHead

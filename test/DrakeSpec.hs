@@ -10,7 +10,7 @@ where
 
 import Control.Lens (Lens', from, (^.))
 import Control.Lens.Properties
-import Data.Vector as V (replicateM, take)
+import Data.Vector as V (mapM, replicateM, take)
 import Drake (Torus (..), rangeDivMod, rangeMod, read2d, torusSize)
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Test.Hspec.Golden ()
@@ -20,7 +20,7 @@ import Test.QuickCheck
     Positive (Positive),
     Testable (property),
   )
-import Prelude (Bool, Int, pure, ($), (*), (.), (>=))
+import Prelude (Bool, Int, guard, pure, ($), (&&), (*), (+), (.), (>=))
 
 -- specialize to Bool
 read2d' :: (Int, Int) -> Lens' (Torus Bool) Bool
@@ -41,13 +41,15 @@ spec = do
 instance Arbitrary a => Arbitrary (Torus a) where
   arbitrary =
     do
-      (Positive (widthT :: Int)) <- arbitrary
-      (Positive hight) <- arbitrary
+      (Positive (widthT' :: Int)) <- arbitrary
+      (Positive hight') <- arbitrary
+      let (widthT, hight) = (widthT' + 2, hight' + 2)
       vectorT <- V.replicateM (widthT * hight) arbitrary
       pure Torus {..}
   shrink t@Torus {vectorT = v} =
     do
       let (w, h) = torusSize t
       (Positive widthT, Positive h') <- shrink (Positive w, Positive h)
-      let vectorT = V.take (widthT * h') v
+      guard (w >= 3 && h >= 3)
+      vectorT <- V.mapM (\x -> x : shrink x) $ V.take (widthT * h') v
       pure Torus {..}

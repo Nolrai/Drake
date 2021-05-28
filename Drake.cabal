@@ -26,6 +26,7 @@ common common-options
                      , relude
                      , vector
                      , lens
+                     , containers
 
 
   mixins:              base hiding (Prelude)
@@ -57,7 +58,6 @@ library
   build-depends:       array
                      , gloss
                      , relude
-                     , containers
                      , vector
   exposed-modules:     Drake
                      , Draw
@@ -75,7 +75,6 @@ executable Drake
                      , random
                      , gloss
                      , text
-                     , containers
   ghc-options:         -threaded
                        -rtsopts
                        -with-rtsopts=-N
@@ -89,12 +88,13 @@ test-suite Drake-test
                      , STCASpec
                      , STCA.CellSpec
                      , STCA.VonNeumannSpec
+                     , STCA.GreaterCellSpec 
+                     , STCA.RulesSpec
   build-depends:       Drake
                      , QuickCheck
                      , hspec
                      , hspec-golden
                      , text
-                     , comonad
                      , lens-properties
   mixins:              relude (Relude as Prelude)
   ghc-options:         -threaded
