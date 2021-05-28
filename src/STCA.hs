@@ -21,7 +21,7 @@ module STCA
     lhzMap,
     findHeadCells,
     RedBlack (..),
-    allVonNeuman,
+    allVonNeumann,
   )
 where
 
@@ -61,7 +61,7 @@ import STCA.Rules
     toggle,
     vnDiff,
   )
-import STCA.VonNeumann (VonNeumann (..), allVonNeuman, inv, offset)
+import STCA.VonNeumann (VonNeumann (..), allVonNeumann, inv, offset)
 
 subCellOfTorus :: (Int, Int) -> VonNeumann -> Lens' (Torus (Cell a)) a
 subCellOfTorus pos vn = read2d pos . subcell vn
@@ -100,7 +100,7 @@ findHeadCells tz =
   do
     pos <- rangeT tz
     let t = readGreaterCell (tz ^. greaterCellFromTorus pos)
-    vn <- V.fromList allVonNeuman
+    vn <- V.fromList allVonNeumann
     guard (t Inside vn == Red && t Outside vn == Black)
     pure (pos, vn)
 
@@ -129,7 +129,7 @@ lhzMap :: Map (GreaterCell RedBlack) (GreaterCell RedBlack, LAR)
 lhzMap =
   M.fromList
     ( do
-        vn <- allVonNeuman
+        vn <- allVonNeumann
         (l, r) <- lhzBase
         pure (lhsToTemplate (LHS vn l), (rhsToTemplate vn r, rhs_head r))
     )

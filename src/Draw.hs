@@ -44,7 +44,7 @@ import STCA
     GreaterCell,
     RedBlack (..),
     VonNeumann (),
-    allVonNeuman,
+    allVonNeumann,
     greaterCellFromTorus,
     subcell,
   )
@@ -72,13 +72,13 @@ instance Draw (Torus (Cell RedBlack)) (Set (GreaterCell RedBlack), (Int, Int), F
           )
 
 instance Draw (Cell RedBlack) Float where
-  draw tileSize c = pictures $ zipWith applyColor allVonNeuman (triangles tileSize)
+  draw tileSize c = pictures $ zipWith applyColor allVonNeumann (triangles tileSize)
     where
       applyColor :: VonNeumann -> Picture -> Picture
       applyColor vn = color (if c ^. subcell vn == Black then light blue else dark orange)
 
 instance Draw (Cell RedBlack, Bool) Float where
-  draw tileSize (c, b) = pictures $ zipWith applyColor allVonNeuman (triangles tileSize)
+  draw tileSize (c, b) = pictures $ zipWith applyColor allVonNeumann (triangles tileSize)
     where
       applyColor :: VonNeumann -> Picture -> Picture
       applyColor vn = color $ (if b then dark else light) (if c ^. subcell vn == Black then cyan else orange)

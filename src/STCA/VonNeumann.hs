@@ -3,7 +3,7 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module STCA.VonNeumann (VonNeumann (..), allVonNeuman, inv, offset, rotateClockwise) where
+module STCA.VonNeumann (VonNeumann (..), allVonNeumann, inv, offset, rotateClockwise) where
 
 import Relude (Enum, Eq, Num ((+), (-)), Ord, Read, Show)
 
@@ -11,8 +11,8 @@ import Relude (Enum, Eq, Num ((+), (-)), Ord, Read, Show)
 data VonNeumann = N | E | S | W
   deriving stock (Show, Read, Eq, Ord, Enum)
 
-allVonNeuman :: [VonNeumann]
-allVonNeuman = [N, E, S, W]
+allVonNeumann :: [VonNeumann]
+allVonNeumann = [N, E, S, W]
 
 inv :: VonNeumann -> VonNeumann
 inv N = S
