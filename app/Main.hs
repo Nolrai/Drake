@@ -4,13 +4,13 @@
 
 module Main
   ( main,
+    redGreaterCell,
   )
 where
 
 -- import Data.Map (keysSet)
 
 import Control.Lens ((^.))
-import Data.Set as S (singleton)
 import Data.Text.IO (hPutStrLn)
 import qualified Data.Vector as V
 import Debug.Trace (traceIO)
@@ -63,17 +63,18 @@ import Relude as R
     (<$>),
     (<>),
   )
-import STCA (Cell, GreaterCell, RedBlack (..), VonNeumann (..), cell, greaterCell, toCell, toggleCellOnTorus)
+import STCA (Cell, GreaterCell, RedBlack (..), VonNeumann (..), cell, greaterCell, toCell, toggleCellOnTorus, lhzMap)
 import System.Environment (getArgs)
 import System.Random.Stateful (getStdGen, randomIO)
-import Data.List ( isInfixOf ) 
+import Data.List ( isInfixOf )
+import Data.Map as M (keysSet)
 
 blankCell :: Cell RedBlack
 blankCell = const Red ^. toCell
 
-blackGreaterCell :: GreaterCell RedBlack
-blackGreaterCell = (blankCell, blankCell) ^. greaterCell
---                        S     W     N    E           SoN   WoW   NoS   EoE
+redGreaterCell :: GreaterCell RedBlack
+redGreaterCell = (blankCell, blankCell) ^. greaterCell
+
 main :: IO ()
 main =
   do
@@ -90,7 +91,7 @@ main =
     let tileSize :: Float
         tileSize = fromIntegral smallerScreenSize / fromIntegral (biggerMatSize + 1)
     print (size, tileSize, start)
-    let drawInfo = (S.singleton blackGreaterCell, size, tileSize)
+    let drawInfo = (M.keysSet lhzMap, size, tileSize)
     runGloss start drawInfo onEditEvent
 
 runGloss :: forall world drawInfo. Draw world drawInfo => world -> drawInfo -> (drawInfo -> Event -> world -> IO world) -> IO ()
