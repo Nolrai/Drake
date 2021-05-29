@@ -10,6 +10,7 @@ where
 
 import Control.Lens (Lens', from, (^.))
 import Control.Lens.Properties
+import Control.Monad (guard)
 import Data.Vector as V (mapM, replicateM, take)
 import Drake (Torus (..), rangeDivMod, rangeMod, read2d, torusSize)
 import Test.Hspec (Spec, describe, it, shouldBe)
@@ -20,7 +21,7 @@ import Test.QuickCheck
     Positive (Positive),
     Testable (property),
   )
-import Prelude (Bool, Int, guard, pure, ($), (&&), (*), (+), (.), (>=))
+import Prelude (Bool, Int, pure, ($), (&&), (*), (+), (.), (>=))
 
 -- specialize to Bool
 read2d' :: (Int, Int) -> Lens' (Torus Bool) Bool

@@ -27,8 +27,11 @@ greaterToSubcell' :: InsideOutside -> VonNeumann -> Lens' (GreaterCell Bool) Boo
 greaterToSubcell' = greaterToSubcell
 
 spec = do
-  describe "greaterCell" . it "is a lens" . property $ isIso greaterCell'
-  describe "greaterToSubcell" . it "is a lens" . property $ \insideOutside vn -> isLens $ greaterToSubcell' insideOutside vn
+  describe "greaterCell" . it "is an iso" . property $ isIso greaterCell'
+  describe "greaterToSubcell" $ do
+    it "is an setter" . property $ \insideOutside vn -> isSetter $ greaterToSubcell' insideOutside vn
+    it "is an traversal" . property $ \insideOutside vn -> isTraversal $ greaterToSubcell' insideOutside vn
+    it "is an lens" . property $ \insideOutside vn -> isLens $ greaterToSubcell' insideOutside vn
 
 instance Arbitrary a => Arbitrary (GreaterCell a) where
   arbitrary = do

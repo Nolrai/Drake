@@ -83,7 +83,7 @@ main =
     let smallerScreenSize = uncurry min screenSize
     let biggerMatSize = uncurry max size
     let tileSize :: Float
-        tileSize = (fromIntegral smallerScreenSize / fromIntegral (biggerMatSize + 1))
+        tileSize = fromIntegral smallerScreenSize / fromIntegral (biggerMatSize + 1)
     print (size, tileSize, start)
     let drawInfo = (S.singleton blackGreaterCell, size, tileSize)
     runGloss start drawInfo onEditEvent
@@ -139,7 +139,7 @@ blankTorus :: ((Int, Int), Torus (Cell RedBlack))
 blankTorus = (defaultSize, Torus (fst defaultSize) underlyingVector)
   where
     underlyingVector = V.replicate (uncurry (*) defaultSize) blankCell
-    blankCell = (const Red) ^. toCell
+    blankCell = const Red ^. toCell
 
 mkRandomTorus :: IO ((Int, Int), Torus (Cell RedBlack))
 mkRandomTorus =
