@@ -66,18 +66,23 @@ import Relude as R
 import STCA (Cell, GreaterCell, RedBlack (..), VonNeumann (..), cell, greaterCell, toCell, toggleCellOnTorus)
 import System.Environment (getArgs)
 import System.Random.Stateful (getStdGen, randomIO)
+import Data.List ( isInfixOf ) 
+
+blankCell :: Cell RedBlack
+blankCell = const Red ^. toCell
 
 blackGreaterCell :: GreaterCell RedBlack
-blackGreaterCell = (const Black ^. toCell, const Black ^. toCell) ^. greaterCell
-
+blackGreaterCell = (blankCell, blankCell) ^. greaterCell
+--                        S     W     N    E           SoN   WoW   NoS   EoE
 main :: IO ()
 main =
   do
     args <- getArgs
     (size, start) <-
       case args of
-        ["random"] -> mkRandomTorus
-        [filename] -> readMatFile filename
+        ["random"]  -> mkRandomTorus
+        ['c':str] -> pure $ strTorus str
+        ["f", filename]  -> readMatFile filename
         _ -> pure blankTorus
     screenSize <- getScreenSize
     let smallerScreenSize = uncurry min screenSize
@@ -114,15 +119,15 @@ trace' msg value = R.trace (msg <> show value) value
 toIndex :: Float -> (Float, Float) -> ((Int, Int), VonNeumann)
 toIndex tileSize (posX', posY') = ((tilesX, tilesY), vn)
   where
-    (posX, posY) = (posX' + tileSize / 2, posY' + tileSize / 2)
+    (posX, posY) = (posX' + tileSize / 2, posY')
     (tilesX, tilesY) = trace' "tiles: " (floor (posX / tileSize), floor (posY / tileSize))
     (offsetX, offsetY) = trace' "offsets: " (posX - fromIntegral tilesX * tileSize, posY - fromIntegral tilesY * tileSize)
     vn = trace' "vn: " $
       case (offsetX > offsetY, offsetY < tileSize - offsetX) of
-        (True, True) -> N
-        (False, True) -> E
-        (False, False) -> S
-        (True, False) -> W
+        (False, False) -> N
+        (True, False) -> E
+        (True, True) -> S
+        (False, True) -> W
 
 readMatFile :: FilePath -> IO ((Int, Int), Torus (Cell RedBlack))
 readMatFile filename =
@@ -136,10 +141,15 @@ defaultSize :: (Int, Int)
 defaultSize = (20, 20)
 
 blankTorus :: ((Int, Int), Torus (Cell RedBlack))
-blankTorus = (defaultSize, Torus (fst defaultSize) underlyingVector)
+blankTorus = defaultTorus blankCell
+
+strTorus :: String -> ((Int, Int), Torus (Cell RedBlack))
+strTorus str = defaultTorus ((\vn -> if show vn `isInfixOf` str then Black else Red) ^. toCell)
+
+defaultTorus :: Cell RedBlack -> ((Int, Int), Torus (Cell RedBlack))
+defaultTorus c = (defaultSize, Torus (fst defaultSize) underlyingVector)
   where
-    underlyingVector = V.replicate (uncurry (*) defaultSize) blankCell
-    blankCell = const Red ^. toCell
+    underlyingVector = V.replicate (uncurry (*) defaultSize) c 
 
 mkRandomTorus :: IO ((Int, Int), Torus (Cell RedBlack))
 mkRandomTorus =

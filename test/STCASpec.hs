@@ -5,11 +5,11 @@ module STCASpec
   )
 where
 
-import Control.Lens (Lens')
+import Control.Lens (Lens', (^.))
 import Control.Lens.Properties (isLens, isSetter, isTraversal)
-import Drake (Torus)
+import Drake (Torus, read2d)
 import DrakeSpec ()
-import STCA (greaterCell, greaterCellFromTorus, subCellOfTorus, toggleCellOnTorus)
+import STCA (inside, greaterCellFromTorus, subCellOfTorus, toggleCellOnTorus)
 import STCA.Cell (Cell)
 import STCA.CellSpec ()
 import STCA.GreaterCell (GreaterCell)
@@ -34,8 +34,11 @@ spec = do
     it "is an setter" . property $ \pos -> isSetter (greaterCellFromTorus pos :: Lens' (Torus (Cell RedBlack)) (GreaterCell RedBlack))
     it "is an traversal" . property $ \pos -> isTraversal (greaterCellFromTorus pos :: Lens' (Torus (Cell RedBlack)) (GreaterCell RedBlack))
     it "is an lens" . property $ \pos -> isLens (greaterCellFromTorus pos :: Lens' (Torus (Cell RedBlack)) (GreaterCell RedBlack))
+    it "is superset of read2d" . property $
+      \ pos t -> t ^. greaterCellFromTorus pos . inside == t ^. read2d pos 
   describe "toggleCellOnTorus" $ do
     it "is involution" . property $
       \pos vn t -> toggleCellOnTorus pos vn (toggleCellOnTorus pos vn t) `shouldBe` t
     it "commutes" . property $
       \pos vn pos' vn' t -> toggleCellOnTorus pos' vn' (toggleCellOnTorus pos vn t) `shouldBe` toggleCellOnTorus pos vn (toggleCellOnTorus pos' vn' t)
+  

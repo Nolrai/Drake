@@ -23,10 +23,15 @@ import Graphics.Gloss
     polygon,
     rotate,
     translate,
+    red,
+    green,
+    black,
+    Color,
+    dim,
   )
 import Relude
   ( Applicative (pure),
-    Bool,
+    Bool(..),
     Eq (..),
     Float,
     Fractional ((/)),
@@ -63,7 +68,7 @@ instance Draw (Torus (Cell RedBlack)) (Set (GreaterCell RedBlack), (Int, Int), F
       pure $
         translate
           (fromIntegral idx * tileSize)
-          (fromIntegral idy * tileSize)
+          (fromIntegral idy * tileSize + tileSize/2)
           ( draw
               tileSize
               ( tz ^. read2d (idx, idy),
@@ -81,10 +86,16 @@ instance Draw (Cell RedBlack, Bool) Float where
   draw tileSize (c, b) = pictures $ zipWith applyColor allVonNeumann (triangles tileSize)
     where
       applyColor :: VonNeumann -> Picture -> Picture
-      applyColor vn = color $ (if b then dark else light) (if c ^. subcell vn == Black then cyan else orange)
+      applyColor vn = color $ toColor b (c ^. subcell vn)
+
+toColor :: Bool-> RedBlack-> Color
+toColor True Red = dark orange
+toColor True Black = blue
+toColor False Red = dim (dark red)
+toColor False Black = black
 
 triangles :: Float -> [Picture]
 triangles tileSize = zipWith rotate [0, 90, 180, -90] (replicate 4 (triangleNorth tileSize))
 
 triangleNorth :: Float -> Picture
-triangleNorth tileSize = polygon [(- tileSize / 2, - tileSize / 2), (tileSize / 2, - tileSize / 2), (0, 0)]
+triangleNorth tileSize = polygon [(- tileSize / 2, tileSize / 2), (tileSize / 2, tileSize / 2), (0, 0)]

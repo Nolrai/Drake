@@ -22,9 +22,9 @@ inv S = N
 inv W = E
 
 offset :: (Int, Int) -> VonNeumann -> (Int, Int)
-offset (x, y) N = (x, y - 1)
+offset (x, y) N = (x, y + 1)
 offset (x, y) E = (x + 1, y)
-offset (x, y) S = (x, y + 1)
+offset (x, y) S = (x, y - 1)
 offset (x, y) W = (x - 1, y)
 
 rotateClockwise :: VonNeumann -> VonNeumann
