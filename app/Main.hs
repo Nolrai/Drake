@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module Main
@@ -10,10 +11,13 @@ where
 
 -- import Data.Map (keysSet)
 
-import Control.Lens ((^.))
+import Control.Lens (makeLenses, (^.))
+import Data.List as L (elem, isInfixOf)
+import Data.Map as M (keysSet)
 import Data.Text.IO (hPutStrLn)
 import qualified Data.Vector as V
 import Debug.Trace (traceIO)
+import Dist
 import Drake (Torus (..))
 import Draw (Draw (..))
 import Graphics.Gloss.Interface.Environment (getScreenSize)
@@ -28,14 +32,26 @@ import Graphics.Gloss.Interface.IO.Game as G
     blue,
     playIO,
   )
-import Relude as R hiding (state)
-import STCA (Cell, GreaterCell, RedBlack (..), VonNeumann (..), cell, greaterCell, toCell, toggleSubCellOnTorus, greaterCellFromTorus, lhzMap, TorusEx)
+import Relude as R
+import STCA
+  ( Cell,
+    GreaterCell,
+    RedBlack (..),
+    TorusEx,
+    VonNeumann (..),
+    cell,
+    greaterCell,
+    greaterCellFromTorus,
+    lhzMap,
+    mkTorusEx,
+    toCell,
+    toggleSubCellOnTorus,
+    torus,
+  )
 import System.Environment (getArgs)
 import System.Random.Stateful (getStdGen, randomIO)
-import Data.List as L ( isInfixOf, elem )
-import Data.Map as M (keysSet)
--- import Data.Set as S (singleton)
 
+-- import Data.Set as S (singleton)
 
 blankCell :: Cell RedBlack
 blankCell = const Red ^. toCell
@@ -44,17 +60,25 @@ redGreaterCell :: GreaterCell RedBlack
 redGreaterCell = (blankCell, blankCell) ^. greaterCell
 
 testGC :: GreaterCell RedBlack
-testGC = (\b->if b then Black else Red) <$> ((== N) ^. toCell, (`L.elem` [N, E]) ^. toCell) ^. greaterCell
+testGC = (\b -> if b then Black else Red) <$> ((== N) ^. toCell, (`L.elem` [N, E]) ^. toCell) ^. greaterCell
+
+newtype ControlState = ControlState {_randomGen :: AtomicGenM}
+
+makeLenses ''ControlState
+
+data World = World {_board :: TorusEx, _controlState :: ControlState}
+
+makeLenses ''World
 
 main :: IO ()
 main =
   do
     args <- getArgs
-    (size, start) <-
+    (size, startTorus) <-
       case args of
-        ["random"]  -> mkRandomTorus
-        ['c':str] -> pure $ strTorus str
-        ["f", filename]  -> readMatFile filename
+        ["random"] -> mkRandomTorus
+        ['c' : str] -> pure $ strTorus str
+        ["f", filename] -> readMatFile filename
         _ -> pure blankTorus
     screenSize <- getScreenSize
     let smallerScreenSize = uncurry min screenSize
@@ -63,44 +87,64 @@ main =
         tileSize = fromIntegral smallerScreenSize / fromIntegral (biggerMatSize + 1)
     print (size, tileSize, start)
     let drawInfo = (M.keysSet lhzMap, size, tileSize)
-    runGloss (mkTorusEx start) drawInfo onEditEvent
+    startWorld <- World (mkTorusEx start) . ControlState <$> newAtomicGenM
+    runGloss drawInfo (board . torus) onEditEvent
 
-data World = World {_board :: TorusEx, _controlState :: ControlState}
-
-runGloss :: forall world drawInfo. 
-  Draw world drawInfo => 
-    world -> drawInfo -> (drawInfo -> Event -> world -> IO world) -> IO ()
-runGloss start drawInfo onEvent = playIO FullScreen blue 1 start onDraw (onEvent drawInfo) trackUpdates
+runGloss ::
+  forall world drawable drawInfo.
+  Draw drawable drawInfo =>
+  world ->
+  drawInfo ->
+  (world -> drawable) ->
+  (drawInfo -> Event -> world -> IO world) ->
+  IO ()
+runGloss start drawInfo toDrawable onEvent = playIO FullScreen blue 1 start onDraw (onEvent drawInfo) trackUpdates
   where
     trackUpdates :: Float -> world -> IO world
     trackUpdates stepSize mat = traceIO ("update called with step size of " <> show stepSize) >> pure mat
     onDraw :: world -> IO G.Picture
-    onDraw state = pure $ draw drawInfo state
+    onDraw world = pure $ draw drawInfo (toDrawable world)
 
-onEditEvent :: (a, b, Float) -> Event -> Torus (Cell RedBlack) -> IO (Torus (Cell RedBlack))
-onEditEvent (_highlight, _matrixSize, tileSize) event world =
-  traceIO ("Event: " <> show event)
-    >> case event of
+onEditEvent :: (a, b, Float) -> Event -> World -> IO World
+onEditEvent (_highlight, _matrixSize, tileSize) event =
+  do
+    traceIO ("Event: " <> show event)
+    case event of
       EventKey (MouseButton RightButton) G.Up _ screenPos ->
-        let cellIndex :: (Int, Int)
-            (cellIndex, vn) = toIndex tileSize screenPos
-         in do
-           let result = toggleSubCellOnTorus cellIndex vn world
-           traceIO ("New GC is: " <> show (result ^. greaterCellFromTorus cellIndex))
-           pure result
-      EventKey (SpecialKey KeyEsc) G.Up _ _ -> R.exitSuccess
-      _ -> pure world
+        handleMouseButtonUp (toIndex tileSize screenPos)
+      EventKey (SpecialKey KeyEsc) G.Up _ _ -> const R.exitSuccess
+      EventKey (SpecialKey Space) G.Up _ _ -> updateWorld
+      _ -> pure
 
-trace' :: Show a => String -> a -> a
-trace' msg value = R.trace (msg <> show value) value
+updateWorld world = (world ^. randomGen) `Dist.drawFrom` wideStep world
 
+handleMouseButtonUp :: ((Int, Int), VonNeumann) -> World -> IO World
+handleMouseButtonUp index = execStateT (handleMouseButtonUp' index)
+
+-- Its a little weird to use StateT for a single function like this..but it helped it so much.
+-- I maybe could use pair list instead..hmm.
+handleMouseButtonUp' :: ((Int, Int), VonNeumann) -> StateT World IO ()
+handleMouseButtonUp' (cellIndex, vn) =
+  do
+    liftIO . traceIO $ "toggle at " <> show (cellIndex, vn)
+    bord . torus %= toggleSubCellOnTorus cellIndex vn
+    isHead <- uses (board . torus . lookupGreaterCell cellIndex) isJust
+    liftIO . traceIO $ if isHead then "It is a head now" else "Now it isn't a head."
+    headSet %= (if isHead then Set.insert else Set.remove) cellIndex
+
+-- for debug
+-- trace' :: Show a => String -> a -> a
+-- trace' msg value = R.trace (msg <> show value) value
+
+-- get the index into the sub cell the mouse is over
+-- note that because of how Torus works this still "works" even if the mouse is not over the matrix.
 toIndex :: Float -> (Float, Float) -> ((Int, Int), VonNeumann)
 toIndex tileSize (posX', posY') = ((tilesX, tilesY), vn)
   where
     (posX, posY) = (posX' + tileSize / 2, posY')
-    (tilesX, tilesY) = trace' "tiles: " (floor (posX / tileSize), floor (posY / tileSize))
-    (offsetX, offsetY) = trace' "offsets: " (posX - fromIntegral tilesX * tileSize, posY - fromIntegral tilesY * tileSize)
-    vn = trace' "vn: " $
+    (tilesX, tilesY) = (floor (posX / tileSize), floor (posY / tileSize))
+    (offsetX, offsetY) = (posX - fromIntegral tilesX * tileSize, posY - fromIntegral tilesY * tileSize)
+    vn =
       case (offsetX > offsetY, offsetY < tileSize - offsetX) of
         (False, False) -> N
         (True, False) -> E
@@ -127,7 +171,7 @@ strTorus str = defaultTorus ((\vn -> if show vn `isInfixOf` str then Black else 
 defaultTorus :: Cell RedBlack -> ((Int, Int), Torus (Cell RedBlack))
 defaultTorus c = (defaultSize, Torus (fst defaultSize) underlyingVector)
   where
-    underlyingVector = V.replicate (uncurry (*) defaultSize) c 
+    underlyingVector = V.replicate (uncurry (*) defaultSize) c
 
 mkRandomTorus :: IO ((Int, Int), Torus (Cell RedBlack))
 mkRandomTorus =
