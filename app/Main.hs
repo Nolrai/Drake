@@ -21,59 +21,30 @@ import Graphics.Gloss.Interface.IO.Game as G
   ( Display (FullScreen),
     Event (EventKey),
     Key (MouseButton, SpecialKey),
-    KeyState (Down, Up),
+    KeyState (..),
     MouseButton (RightButton),
     Picture,
     SpecialKey (KeyEsc),
     blue,
     playIO,
   )
-import Relude as R
-  ( Applicative (pure, (<*>)),
-    Bool (..),
-    Either (Left, Right),
-    FilePath,
-    Float,
-    Fractional ((/)),
-    IO,
-    Int,
-    Monad ((>>)),
-    Num ((*), (+), (-)),
-    Ord ((<), (>)),
-    RealFrac (floor),
-    Semigroup ((<>)),
-    Show,
-    String,
-    ToString (toString),
-    const,
-    die,
-    exitSuccess,
-    fromIntegral,
-    fst,
-    max,
-    min,
-    print,
-    readEither,
-    readFile,
-    show,
-    stderr,
-    trace,
-    uncurry,
-    ($),
-    (<$>),
-    (<>),
-  )
-import STCA (Cell, GreaterCell, RedBlack (..), VonNeumann (..), cell, greaterCell, toCell, toggleCellOnTorus, lhzMap)
+import Relude as R hiding (state)
+import STCA (Cell, GreaterCell, RedBlack (..), VonNeumann (..), cell, greaterCell, toCell, toggleSubCellOnTorus, greaterCellFromTorus, lhzMap, TorusEx)
 import System.Environment (getArgs)
 import System.Random.Stateful (getStdGen, randomIO)
-import Data.List ( isInfixOf )
+import Data.List as L ( isInfixOf, elem )
 import Data.Map as M (keysSet)
+-- import Data.Set as S (singleton)
+
 
 blankCell :: Cell RedBlack
 blankCell = const Red ^. toCell
 
 redGreaterCell :: GreaterCell RedBlack
 redGreaterCell = (blankCell, blankCell) ^. greaterCell
+
+testGC :: GreaterCell RedBlack
+testGC = (\b->if b then Black else Red) <$> ((== N) ^. toCell, (`L.elem` [N, E]) ^. toCell) ^. greaterCell
 
 main :: IO ()
 main =
@@ -92,11 +63,14 @@ main =
         tileSize = fromIntegral smallerScreenSize / fromIntegral (biggerMatSize + 1)
     print (size, tileSize, start)
     let drawInfo = (M.keysSet lhzMap, size, tileSize)
-    runGloss start drawInfo onEditEvent
+    runGloss (mkTorusEx start) drawInfo onEditEvent
 
-runGloss :: forall world drawInfo. Draw world drawInfo => world -> drawInfo -> (drawInfo -> Event -> world -> IO world) -> IO ()
--- runGloss :: Torus (Cell RedBlack) -> (Set (GreaterCell RedBlack),  (Int, Int), Float) -> ((Set (GreaterCell RedBlack),  (Int, Int), Float) -> Even -> Torus (Cell RedBlack) -> IO world) -> IO ()
-runGloss start drawInfo onEvent = playIO FullScreen blue 0 start onDraw (onEvent drawInfo) trackUpdates
+data World = World {_board :: TorusEx, _controlState :: ControlState}
+
+runGloss :: forall world drawInfo. 
+  Draw world drawInfo => 
+    world -> drawInfo -> (drawInfo -> Event -> world -> IO world) -> IO ()
+runGloss start drawInfo onEvent = playIO FullScreen blue 1 start onDraw (onEvent drawInfo) trackUpdates
   where
     trackUpdates :: Float -> world -> IO world
     trackUpdates stepSize mat = traceIO ("update called with step size of " <> show stepSize) >> pure mat
@@ -107,10 +81,13 @@ onEditEvent :: (a, b, Float) -> Event -> Torus (Cell RedBlack) -> IO (Torus (Cel
 onEditEvent (_highlight, _matrixSize, tileSize) event world =
   traceIO ("Event: " <> show event)
     >> case event of
-      EventKey (MouseButton RightButton) G.Down _ screenPos ->
+      EventKey (MouseButton RightButton) G.Up _ screenPos ->
         let cellIndex :: (Int, Int)
             (cellIndex, vn) = toIndex tileSize screenPos
-         in pure $ toggleCellOnTorus cellIndex vn world
+         in do
+           let result = toggleSubCellOnTorus cellIndex vn world
+           traceIO ("New GC is: " <> show (result ^. greaterCellFromTorus cellIndex))
+           pure result
       EventKey (SpecialKey KeyEsc) G.Up _ _ -> R.exitSuccess
       _ -> pure world
 

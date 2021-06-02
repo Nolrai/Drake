@@ -59,8 +59,10 @@ library
                      , gloss
                      , relude
                      , vector
+                     , random
   exposed-modules:     Drake
                      , Draw
+                     , Dist
                      , STCA
                      , STCA.Cell
                      , STCA.GreaterCell
