@@ -11,7 +11,7 @@ where
 import Control.Lens (Lens', from, (^.))
 import Control.Lens.Properties
 import Control.Monad (guard)
-import Data.Vector as V (mapM, replicateM, take, drop, zipWith)
+import Data.Vector as V (drop, mapM, replicateM, take, zipWith)
 import Drake (Torus (..), rangeDivMod, rangeMod, read2d, torusSize)
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Test.Hspec.Golden ()
@@ -39,13 +39,13 @@ spec = do
     it "is a traversal" . property $ \p -> isTraversal (read2d' p)
     it "is a lens" . property $ \p -> isLens (read2d' p)
   describe "rangeT" $ do
-    it "is ascending" . property $ 
-      \ t -> rangeT t `shouldSatisfy` isAsc
-    it "is same lenth as vectorT" . property $ 
-      \ t -> V.length (rangeT t) `shouldBe` V.length (vectorT t) 
+    it "is ascending" . property $
+      \t -> rangeT t `shouldSatisfy` isAsc
+    it "is same lenth as vectorT" . property $
+      \t -> V.length (rangeT t) `shouldBe` V.length (vectorT t)
 
 isAsc :: Ord a => [a] -> Bool
-isAsc = V.foldr (&&) $ V.zipWith (<) v (V.drop 1 v) 
+isAsc = V.foldr (&&) $ V.zipWith (<) v (V.drop 1 v)
 
 instance Arbitrary a => Arbitrary (Torus a) where
   arbitrary =

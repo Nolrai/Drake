@@ -12,26 +12,24 @@ import Control.Lens ((^.))
 import Data.Set
 import Drake
 import Graphics.Gloss
-  ( Picture,
+  ( Color,
+    Picture,
+    black,
     blue,
     color,
-    cyan,
     dark,
+    dim,
     light,
     orange,
     pictures,
     polygon,
+    red,
     rotate,
     translate,
-    red,
-    green,
-    black,
-    Color,
-    dim,
   )
 import Relude
   ( Applicative (pure),
-    Bool(..),
+    Bool (..),
     Eq (..),
     Float,
     Fractional ((/)),
@@ -68,7 +66,7 @@ instance Draw (Torus (Cell RedBlack)) (Set (GreaterCell RedBlack), (Int, Int), F
       pure $
         translate
           (fromIntegral idx * tileSize)
-          (fromIntegral idy * tileSize + tileSize/2)
+          (fromIntegral idy * tileSize + tileSize / 2)
           ( draw
               tileSize
               ( tz ^. read2d (idx, idy),
@@ -88,7 +86,7 @@ instance Draw (Cell RedBlack, Bool) Float where
       applyColor :: VonNeumann -> Picture -> Picture
       applyColor vn = color $ toColor b (c ^. subcell vn)
 
-toColor :: Bool-> RedBlack-> Color
+toColor :: Bool -> RedBlack -> Color
 toColor True Red = dark orange
 toColor True Black = blue
 toColor False Red = dim (dark red)
