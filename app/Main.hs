@@ -1,4 +1,7 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -9,11 +12,11 @@ module Main
   )
 where
 
--- import Data.Map (keysSet)
-
-import Control.Lens (makeLenses, (^.))
+import Control.Arrow ()
+import Control.Lens
 import Data.List as L (elem, isInfixOf)
 import Data.Map as M (keysSet)
+import Data.Set as Set (delete, insert)
 import Data.Text.IO (hPutStrLn)
 import qualified Data.Vector as V
 import Debug.Trace (traceIO)
@@ -28,28 +31,14 @@ import Graphics.Gloss.Interface.IO.Game as G
     KeyState (..),
     MouseButton (RightButton),
     Picture,
-    SpecialKey (KeyEsc),
+    SpecialKey (KeyEsc, KeySpace),
     blue,
     playIO,
   )
 import Relude as R
 import STCA
-  ( Cell,
-    GreaterCell,
-    RedBlack (..),
-    TorusEx,
-    VonNeumann (..),
-    cell,
-    greaterCell,
-    greaterCellFromTorus,
-    lhzMap,
-    mkTorusEx,
-    toCell,
-    toggleSubCellOnTorus,
-    torus,
-  )
 import System.Environment (getArgs)
-import System.Random.Stateful (getStdGen, randomIO)
+import System.Random.Stateful
 
 -- import Data.Set as S (singleton)
 
@@ -62,7 +51,7 @@ redGreaterCell = (blankCell, blankCell) ^. greaterCell
 testGC :: GreaterCell RedBlack
 testGC = (\b -> if b then Black else Red) <$> ((== N) ^. toCell, (`L.elem` [N, E]) ^. toCell) ^. greaterCell
 
-newtype ControlState = ControlState {_randomGen :: AtomicGenM}
+newtype ControlState = ControlState {_runControlState :: AtomicGenM StdGen}
 
 makeLenses ''ControlState
 
@@ -70,11 +59,14 @@ data World = World {_board :: TorusEx, _controlState :: ControlState}
 
 makeLenses ''World
 
+gen :: Lens' World (AtomicGenM StdGen)
+gen = controlState . runControlState
+
 main :: IO ()
 main =
   do
     args <- getArgs
-    (size, startTorus) <-
+    (size, startingTorus) <-
       case args of
         ["random"] -> mkRandomTorus
         ['c' : str] -> pure $ strTorus str
@@ -85,38 +77,51 @@ main =
     let biggerMatSize = uncurry max size
     let tileSize :: Float
         tileSize = fromIntegral smallerScreenSize / fromIntegral (biggerMatSize + 1)
-    print (size, tileSize, start)
+    print (size, tileSize, startingTorus)
     let drawInfo = (M.keysSet lhzMap, size, tileSize)
-    startWorld <- World (mkTorusEx start) . ControlState <$> newAtomicGenM
-    runGloss drawInfo (board . torus) onEditEvent
+    atomicGen <- newAtomicGenM =<< getStdGen
+    let startingWorld = World (mkTorusEx startingTorus) (ControlState atomicGen)
+    runGloss drawInfo startingWorld (board . torus) onEditEvent
 
 runGloss ::
   forall world drawable drawInfo.
   Draw drawable drawInfo =>
-  world ->
   drawInfo ->
-  (world -> drawable) ->
+  world ->
+  Getter world drawable ->
   (drawInfo -> Event -> world -> IO world) ->
   IO ()
-runGloss start drawInfo toDrawable onEvent = playIO FullScreen blue 1 start onDraw (onEvent drawInfo) trackUpdates
+runGloss drawInfo start toDrawable onEvent = playIO FullScreen blue 1 start onDraw (onEvent drawInfo) trackUpdates
   where
     trackUpdates :: Float -> world -> IO world
     trackUpdates stepSize mat = traceIO ("update called with step size of " <> show stepSize) >> pure mat
     onDraw :: world -> IO G.Picture
-    onDraw world = pure $ draw drawInfo (toDrawable world)
+    onDraw world = pure $ draw drawInfo (world ^. toDrawable)
 
 onEditEvent :: (a, b, Float) -> Event -> World -> IO World
-onEditEvent (_highlight, _matrixSize, tileSize) event =
+onEditEvent (_highlight, _matrixSize, tileSize) event world =
   do
-    traceIO ("Event: " <> show event)
+    (traceIO ("Event: " <> show event) :: IO ())
     case event of
       EventKey (MouseButton RightButton) G.Up _ screenPos ->
-        handleMouseButtonUp (toIndex tileSize screenPos)
-      EventKey (SpecialKey KeyEsc) G.Up _ _ -> const R.exitSuccess
-      EventKey (SpecialKey Space) G.Up _ _ -> updateWorld
-      _ -> pure
+        handleMouseButtonUp (toIndex tileSize screenPos) world
+      EventKey (SpecialKey KeyEsc) G.Up _ _ -> R.exitSuccess
+      EventKey (SpecialKey KeySpace) G.Up _ _ -> updateWorld world
+      _ -> pure world
 
-updateWorld world = (world ^. randomGen) `Dist.drawFrom` wideStep world
+updateWorld :: World -> IO World
+updateWorld = execStateT updateWorld'
+
+updateWorld' ::
+  forall (m :: Type -> Type).
+  (Alternative m, StatefulGen (AtomicGenM StdGen) m, MonadIO m) =>
+  StateT World m ()
+updateWorld' =
+  do
+    (g :: AtomicGenM StdGen) <- use gen
+    (dist :: Dist TorusEx) <- uses board wideStep
+    (new :: TorusEx) <- liftIO (g `drawFrom` dist)
+    board .= new
 
 handleMouseButtonUp :: ((Int, Int), VonNeumann) -> World -> IO World
 handleMouseButtonUp index = execStateT (handleMouseButtonUp' index)
@@ -127,10 +132,10 @@ handleMouseButtonUp' :: ((Int, Int), VonNeumann) -> StateT World IO ()
 handleMouseButtonUp' (cellIndex, vn) =
   do
     liftIO . traceIO $ "toggle at " <> show (cellIndex, vn)
-    bord . torus %= toggleSubCellOnTorus cellIndex vn
-    isHead <- uses (board . torus . lookupGreaterCell cellIndex) isJust
+    board . torus %= toggleSubCellOnTorus cellIndex vn
+    isHead <- use (board . isLhzHead cellIndex)
     liftIO . traceIO $ if isHead then "It is a head now" else "Now it isn't a head."
-    headSet %= (if isHead then Set.insert else Set.remove) cellIndex
+    board . headSet %= (if isHead then Set.insert else Set.delete) cellIndex
 
 -- for debug
 -- trace' :: Show a => String -> a -> a

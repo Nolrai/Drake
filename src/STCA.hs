@@ -19,6 +19,7 @@ module STCA
     greaterCell,
     greaterToSubcell,
     greaterCellFromTorus,
+    isLhzHead,
     lhzMap,
     RedBlack (..),
     allVonNeumann,
@@ -27,6 +28,7 @@ module STCA
     torus,
     headSet,
     mkTorusEx,
+    pairLens, -- should we really define this here??
   )
 where
 
@@ -177,6 +179,9 @@ applyRuleResult pos = applyRuleToTorus pos *** applyRuleToHeadSet pos
 
 lookupGreaterCell :: (Int, Int) -> Getter TorusEx (Maybe (GreaterCell RedBlack, VonNeumann))
 lookupGreaterCell pos = torus . greaterCellFromTorus pos . to (`Map.lookup` lhzMap)
+
+isLhzHead :: (Int, Int) -> Getter TorusEx Bool
+isLhzHead pos = lookupGreaterCell pos . to isJust
 
 applyRuleToTorus :: (Int, Int) -> GreaterCell RedBlack -> Torus (Cell RedBlack) -> Torus (Cell RedBlack)
 applyRuleToTorus pos newGC = greaterCellFromTorus pos .~ newGC

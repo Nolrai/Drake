@@ -11,9 +11,9 @@ where
 import Control.Lens (Lens', from, (^.))
 import Control.Lens.Properties
 import Control.Monad (guard)
-import Data.Vector as V (drop, mapM, replicateM, take, zipWith)
-import Drake (Torus (..), rangeDivMod, rangeMod, read2d, torusSize)
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Data.Vector as V
+import Drake
+import Test.Hspec
 import Test.Hspec.Golden ()
 import Test.QuickCheck
   ( Arbitrary (arbitrary, shrink),
@@ -21,7 +21,7 @@ import Test.QuickCheck
     Positive (Positive),
     Testable (property),
   )
-import Prelude (Bool, Int, pure, ($), (&&), (*), (+), (.), (>=))
+import Prelude
 
 -- specialize to Bool
 read2d' :: (Int, Int) -> Lens' (Torus Bool) Bool
@@ -40,12 +40,12 @@ spec = do
     it "is a lens" . property $ \p -> isLens (read2d' p)
   describe "rangeT" $ do
     it "is ascending" . property $
-      \t -> rangeT t `shouldSatisfy` isAsc
+      \(t :: Torus ()) -> rangeT t `shouldSatisfy` isAsc
     it "is same lenth as vectorT" . property $
-      \t -> V.length (rangeT t) `shouldBe` V.length (vectorT t)
+      \(t :: Torus ()) -> V.length (rangeT t) `shouldBe` V.length (vectorT t)
 
-isAsc :: Ord a => [a] -> Bool
-isAsc = V.foldr (&&) $ V.zipWith (<) v (V.drop 1 v)
+isAsc :: Ord a => Vector a -> Bool
+isAsc v = V.foldr (&&) True $ V.zipWith (<) v (V.drop 1 v)
 
 instance Arbitrary a => Arbitrary (Torus a) where
   arbitrary =
