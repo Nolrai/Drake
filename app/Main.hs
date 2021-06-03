@@ -13,7 +13,7 @@ module Main
 where
 
 import Control.Arrow ()
-import Control.Lens
+import Control.Lens hiding (index)
 import Data.List as L (elem, isInfixOf)
 import Data.Map as M (keysSet)
 import Data.Set as Set (delete, insert)
@@ -113,9 +113,7 @@ updateWorld :: World -> IO World
 updateWorld = execStateT updateWorld'
 
 updateWorld' ::
-  forall (m :: Type -> Type).
-  (Alternative m, StatefulGen (AtomicGenM StdGen) m, MonadIO m) =>
-  StateT World m ()
+  StateT World IO ()
 updateWorld' =
   do
     (g :: AtomicGenM StdGen) <- use gen
@@ -133,9 +131,14 @@ handleMouseButtonUp' (cellIndex, vn) =
   do
     liftIO . traceIO $ "toggle at " <> show (cellIndex, vn)
     board . torus %= toggleSubCellOnTorus cellIndex vn
-    isHead <- use (board . isLhzHead cellIndex)
-    liftIO . traceIO $ if isHead then "It is a head now" else "Now it isn't a head."
-    board . headSet %= (if isHead then Set.insert else Set.delete) cellIndex
+    mapM_ updateHeadAt [cellIndex, cellIndex `offset` vn]
+
+updateHeadAt :: (Int, Int)-> StateT World IO ()
+updateHeadAt cellIndex =     
+  do
+  isHead <- use (board . isLhzHead cellIndex)
+  liftIO . traceIO $ show cellIndex <> if isHead then " is a head now" else " isn't a head."
+  board . headSet %= (if isHead then Set.insert else Set.delete) cellIndex
 
 -- for debug
 -- trace' :: Show a => String -> a -> a
