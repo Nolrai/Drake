@@ -87,6 +87,7 @@ test-suite Drake-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   other-modules:       DrakeSpec
+                     , DistSpec
                      , STCASpec
                      , STCA.CellSpec
                      , STCA.VonNeumannSpec
@@ -99,6 +100,7 @@ test-suite Drake-test
                      , text
                      , lens-properties
                      , histogram-simple
+                     , random ^>= 1.2
   mixins:              relude (Relude as Prelude)
   ghc-options:         -threaded
                        -rtsopts

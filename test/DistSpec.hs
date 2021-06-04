@@ -1,50 +1,66 @@
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedLists #-}
 
 module DistSpec
   ( spec,
   )
 where
 
+import Data.Histogram as Histogram
 import Data.Set as Set
-import Data.Map as Map
-import Control.Monad (guard)
-import Data.Vector as V
-import Data.Histogram as H
+import Data.Vector as Vector
 import Dist
+import GHC.Real ((%))
+import System.Random
+import System.Random.Stateful
 import Test.Hspec
 import Test.QuickCheck
-  ( Arbitrary (arbitrary, shrink),
-    NonZero (NonZero),
-    Positive (Positive),
-    Testable (property),
-    (.&&.)
-  )
 import Prelude hiding (die)
-import 
 
 vectorToHistogram :: Ord a => Vector a -> Histogram a
-vectorToHistogram = H.fromList a V.toList
+vectorToHistogram = Histogram.fromList . Vector.toList
 
 dieSides :: Vector Char
-dieSides = ['A'.. 'E']
+dieSides = ['A' .. 'E']
 
 die :: Dist Char
-die = mkUniform . Set.fromAscList . V.toList $ dieSides
+die = fromVector dieSides
 
+rootNumTrials :: Int
 rootNumTrials = 100
 
-testKey h key = (H.lookup key h `div` rootNumTrials) `shouldBe` (rootNumTrials `div` Prelude.length dieSides)
+numTrials :: Int
+numTrials = rootNumTrials * rootNumTrials
+
+testKey :: Histogram Char -> Char -> Bool
+testKey h key = (key, roundOff' (Histogram.lookup key h)) == (key, roundOff' (numTrials `div` Prelude.length dieSides))
+  where
+    roundOff' original = roundOff original rootNumTrials
+
+roundOff :: Int -> Int -> Int
+roundOff original scale = round (original % scale) * scale
+
+isApproximatelyUniform :: Bool -> Dist Char -> Expectation
+isApproximatelyUniform good dist =
+  do
+    g <- newAtomicGenM =<< getStdGen
+    v <- Vector.replicateM numTrials (g `drawFrom` dist)
+    let should = (if good then shouldSatisfy else shouldNotSatisfy) :: Histogram Char -> (Histogram Char -> Bool) -> Expectation
+    vectorToHistogram v `should` \h -> Vector.all (testKey h) dieSides
 
 spec :: Spec
-spec =
+spec = focus $
   do
-    focus $ describe "drawFrom . mkUniform" $
-      it "shouldbe aprox uniform" $
-        do
-          g <- getStdGen
-          v <- V.replicateM (rootNumTrials * rootNumTrials) (g `drawFrom` die)
-          let h = vectorToHistogram v
-          V.mapM_ (testKey h) dieSides
+    describe "isApproximatelyUniform" $ do
+      it "should detect bad dice" . property $
+        \l ->
+          do
+            let toDieSide a = dieSides Vector.! (abs a `mod` Vector.length dieSides)
+            let v = Vector.fromList l
+            let testDie = fromVector $ (toDieSide <$> v) <> dieSides
+            testDie /= die ==> isApproximatelyUniform False testDie
+    describe "drawFrom . fromVector" $ do
+      it "shouldbe isApproximatelyUniform uniform" $
+        isApproximatelyUniform True die

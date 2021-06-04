@@ -156,7 +156,7 @@ data TorusEx = TorusEx {_torus :: Torus (Cell RedBlack), _headSet :: Set (Int, I
 makeLenses ''TorusEx
 
 wideStep :: TorusEx -> Dist TorusEx
-wideStep oldState = applyRule oldState <$> mkUniform (oldState ^. headSet)
+wideStep oldState = applyRule oldState <$> Dist.fromSet (oldState ^. headSet)
 
 applyRule :: TorusEx -> (Int, Int) -> TorusEx
 -- pos is the index of the cell the head is pointing into
