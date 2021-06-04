@@ -1,4 +1,4 @@
-resolver: lts-17.11
+resolver: nightly-2021-06-01
 
 extra-deps:
-- random-1.2.0
+- histogram-simple-1.0@sha256:7404c855e516509c4afacee2566573ce679e35664c5884fc586ab4bb0d176bcf,790

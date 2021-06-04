@@ -9,6 +9,7 @@
 module Main
   ( main,
     redGreaterCell,
+    mkGreaterCell,
   )
 where
 
@@ -42,14 +43,16 @@ import System.Random.Stateful
 
 -- import Data.Set as S (singleton)
 
-blankCell :: Cell RedBlack
-blankCell = const Red ^. toCell
+redCell :: Cell RedBlack
+redCell = const Red ^. toCell
 
+-- the default, uninteresting background.
 redGreaterCell :: GreaterCell RedBlack
-redGreaterCell = (blankCell, blankCell) ^. greaterCell
+redGreaterCell = (redCell, redCell) ^. greaterCell
 
-testGC :: GreaterCell RedBlack
-testGC = (\b -> if b then Black else Red) <$> ((== N) ^. toCell, (`L.elem` [N, E]) ^. toCell) ^. greaterCell
+-- for easily testing drawing and initilization, the spicifics don't mater as much as being easy to define
+mkGreaterCell :: [VonNeumann] -> [VonNeumann] -> GreaterCell RedBlack
+mkGreaterCell i o = (\b -> if b then Black else Red) <$> ((`L.elem` i) ^. toCell, (`L.elem` o) ^. toCell) ^. greaterCell
 
 newtype ControlState = ControlState {_runControlState :: AtomicGenM StdGen}
 
@@ -171,7 +174,7 @@ defaultSize :: (Int, Int)
 defaultSize = (20, 20)
 
 blankTorus :: ((Int, Int), Torus (Cell RedBlack))
-blankTorus = defaultTorus blankCell
+blankTorus = defaultTorus redCell
 
 strTorus :: String -> ((Int, Int), Torus (Cell RedBlack))
 strTorus str = defaultTorus ((\vn -> if show vn `isInfixOf` str then Black else Red) ^. toCell)
