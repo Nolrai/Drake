@@ -60,6 +60,8 @@ library
                      , relude
                      , vector
                      , random ^>= 1.2
+                     , histogram-simple
+                     , QuickCheck
   exposed-modules:     Drake
                      , Draw
                      , Dist
