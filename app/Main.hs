@@ -13,14 +13,13 @@ module Main
 where
 
 import Control.Arrow ()
-import Control.Lens
+import Control.Lens hiding (index)
 import Data.List as L (elem, isInfixOf)
 import Data.Map as M (keysSet)
 import Data.Set as Set (delete, insert)
 import Data.Text.IO (hPutStrLn)
 import qualified Data.Vector as V
 import Debug.Trace (traceIO)
-import Dist
 import Drake (Torus (..))
 import Draw (Draw (..))
 import Graphics.Gloss.Interface.Environment (getScreenSize)
@@ -114,13 +113,13 @@ updateWorld = execStateT updateWorld'
 
 updateWorld' ::
   forall (m :: Type -> Type).
-  (Alternative m, StatefulGen (AtomicGenM StdGen) m, MonadIO m) =>
+  (Alternative m, MonadIO m) =>
   StateT World m ()
 updateWorld' =
   do
     (g :: AtomicGenM StdGen) <- use gen
-    (dist :: Dist TorusEx) <- uses board wideStep
-    (new :: TorusEx) <- liftIO (g `drawFrom` dist)
+    (newBoards :: Int -> TorusEx) <- uses board wideStep
+    (new :: TorusEx) <- newBoards <$> uniformM g
     board .= new
 
 handleMouseButtonUp :: ((Int, Int), VonNeumann) -> World -> IO World

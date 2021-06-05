@@ -35,12 +35,11 @@ where
 -- import Data.Set as Set
 
 import Control.Arrow ((***))
-import Control.Lens hiding (inside, outside)
+import Control.Lens hiding (inside, outside, index)
 import Data.Map as Map (fromList, keysSet, lookup)
 import Data.Set as Set
 import Data.Vector as Vector
-import Dist
-import Drake (Torus, rangeT, read2d)
+import Drake (Torus, rangeT, read2d, rangeMod)
 import Relude
 import STCA.Cell (Cell (Cell), cell, subcell, toCell)
 import STCA.GreaterCell
@@ -155,8 +154,11 @@ data TorusEx = TorusEx {_torus :: Torus (Cell RedBlack), _headSet :: Set (Int, I
 
 makeLenses ''TorusEx
 
-wideStep :: TorusEx -> Dist TorusEx
-wideStep oldState = applyRule oldState <$> mkUniform (oldState ^. headSet)
+wideStep :: TorusEx -> Int -> TorusEx
+wideStep oldState index = applyRule oldState pos
+  where
+    headSet' = oldState ^. headSet
+    pos = (Vector.fromList . Set.toList) headSet' ! (index `rangeMod` Set.size headSet') 
 
 applyRule :: TorusEx -> (Int, Int) -> TorusEx
 -- pos is the index of the cell the head is pointing into
