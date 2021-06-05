@@ -155,7 +155,7 @@ data TorusEx = TorusEx {_torus :: Torus (Cell RedBlack), _headSet :: Set (Int, I
 makeLenses ''TorusEx
 
 wideStep :: TorusEx -> Int -> TorusEx
-wideStep oldState index = applyRule oldState pos
+wideStep oldState index = if Set.null headSet' then error $ fromString "headSet is null" else applyRule oldState pos
   where
     headSet' = oldState ^. headSet
     pos = (Vector.fromList . Set.toList) headSet' ! (index `rangeMod` Set.size headSet') 

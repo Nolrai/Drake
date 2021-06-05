@@ -132,8 +132,13 @@ handleMouseButtonUp' (cellIndex, vn) =
   do
     liftIO . traceIO $ "toggle at " <> show (cellIndex, vn)
     board . torus %= toggleSubCellOnTorus cellIndex vn
+    mapM_ updateHeadAt [cellIndex, cellIndex `offset` vn]
+
+updateHeadAt :: (Int, Int) -> StateT World IO ()
+updateHeadAt cellIndex =
+  do
     isHead <- use (board . isLhzHead cellIndex)
-    liftIO . traceIO $ if isHead then "It is a head now" else "Now it isn't a head."
+    liftIO . traceIO $ show cellIndex <> if isHead then " is a head now" else " isn't a head."
     board . headSet %= (if isHead then Set.insert else Set.delete) cellIndex
 
 -- for debug
