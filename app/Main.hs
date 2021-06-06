@@ -26,7 +26,7 @@ import Graphics.Gloss.Interface.Environment (getScreenSize)
 import Graphics.Gloss.Interface.IO.Game as G
   ( Display (FullScreen),
     Event (EventKey),
-    Key (MouseButton, SpecialKey),
+    Key (..),
     KeyState (..),
     MouseButton (RightButton),
     Picture,
@@ -50,16 +50,9 @@ redGreaterCell = (blankCell, blankCell) ^. greaterCell
 testGC :: GreaterCell RedBlack
 testGC = (\b -> if b then Black else Red) <$> ((== N) ^. toCell, (`L.elem` [N, E]) ^. toCell) ^. greaterCell
 
-newtype ControlState = ControlState {_runControlState :: AtomicGenM StdGen}
-
-makeLenses ''ControlState
-
-data World = World {_board :: TorusEx, _controlState :: ControlState}
+data World = World {_board :: TorusEx, _gen :: AtomicGenM StdGen, _updateRate :: Int}
 
 makeLenses ''World
-
-gen :: Lens' World (AtomicGenM StdGen)
-gen = controlState . runControlState
 
 main :: IO ()
 main =
@@ -79,8 +72,8 @@ main =
     print (size, tileSize, startingTorus)
     let drawInfo = (M.keysSet lhzMap, size, tileSize)
     atomicGen <- newAtomicGenM =<< getStdGen
-    let startingWorld = World (mkTorusEx startingTorus) (ControlState atomicGen)
-    runGloss drawInfo startingWorld (board . torus) onEditEvent
+    let startingWorld = World (mkTorusEx startingTorus) atomicGen 0
+    runGloss drawInfo startingWorld (board . torus) onEditEvent updateOnTick
 
 runGloss ::
   forall world drawable drawInfo.
@@ -88,47 +81,45 @@ runGloss ::
   drawInfo ->
   world ->
   Getter world drawable ->
-  (drawInfo -> Event -> world -> IO world) ->
+  (drawInfo -> Event -> StateT world IO ()) ->
+  StateT world IO () ->
   IO ()
-runGloss drawInfo start toDrawable onEvent = playIO FullScreen blue 1 start onDraw (onEvent drawInfo) trackUpdates
+runGloss drawInfo start toDrawable onEvent onTick = playIO FullScreen blue 16 start onDraw (\ event -> (onEvent drawInfo event `execStateT`)) (const (onTick `execStateT`))
   where
-    trackUpdates :: Float -> world -> IO world
-    trackUpdates stepSize mat = traceIO ("update called with step size of " <> show stepSize) >> pure mat
     onDraw :: world -> IO G.Picture
     onDraw world = pure $ draw drawInfo (world ^. toDrawable)
 
-onEditEvent :: (a, b, Float) -> Event -> World -> IO World
-onEditEvent (_highlight, _matrixSize, tileSize) event world =
+onEditEvent :: (a, b, Float) -> Event -> StateT World IO ()
+onEditEvent (_highlight, _matrixSize, tileSize) event =
   do
-    (traceIO ("Event: " <> show event) :: IO ())
+    liftIO $ traceIO ("Event: " <> show event)
     case event of
-      EventKey (MouseButton RightButton) G.Up _ screenPos ->
-        handleMouseButtonUp (toIndex tileSize screenPos) world
+      EventKey (MouseButton RightButton) G.Up _ screenPos -> handleMouseButtonUp (toIndex tileSize screenPos)
+      EventKey (Char '>') G.Up _ _ -> updateRate %= (+1)
+      EventKey (Char '<') G.Up _ _ -> updateRate %= (+1)
       EventKey (SpecialKey KeyEsc) G.Up _ _ -> R.exitSuccess
-      EventKey (SpecialKey KeySpace) G.Up _ _ -> updateWorld world
-      _ -> pure world
+      EventKey (SpecialKey KeySpace) G.Up _ _ -> updateWorld
+      _ -> pure ()
 
-updateWorld :: World -> IO World
-updateWorld = execStateT updateWorld'
+updateOnTick :: (Alternative m, MonadIO m) => StateT World m ()
+updateOnTick =
+  do
+    rate <- use updateRate
+    replicateM_ rate updateWorld
 
-updateWorld' ::
+updateWorld ::
   forall (m :: Type -> Type).
   (Alternative m, MonadIO m) =>
   StateT World m ()
-updateWorld' =
+updateWorld =
   do
     (g :: AtomicGenM StdGen) <- use gen
     (newBoards :: Int -> TorusEx) <- uses board wideStep
     (new :: TorusEx) <- newBoards <$> uniformM g
     board .= new
 
-handleMouseButtonUp :: ((Int, Int), VonNeumann) -> World -> IO World
-handleMouseButtonUp index = execStateT (handleMouseButtonUp' index)
-
--- Its a little weird to use StateT for a single function like this..but it helped it so much.
--- I maybe could use pair list instead..hmm.
-handleMouseButtonUp' :: ((Int, Int), VonNeumann) -> StateT World IO ()
-handleMouseButtonUp' (cellIndex, vn) =
+handleMouseButtonUp :: ((Int, Int), VonNeumann) -> StateT World IO ()
+handleMouseButtonUp (cellIndex, vn) =
   do
     liftIO . traceIO $ "toggle at " <> show (cellIndex, vn)
     board . torus %= toggleSubCellOnTorus cellIndex vn
