@@ -5,19 +5,19 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module STCA.Cell (Cell (Cell), cell, toCell, subcell) where
+module Hex.Cell (Cell (Cell), cell, toCell, subcell) where
 
 import Control.Lens
 import Relude (Eq, Functor, Generic, Ord, Read, Show)
-import STCA.Direction (Direction (..))
+import Hex.Direction (Direction (..))
 
 {-# ANN module "HLint: ignore Use newtype instead of data" #-}
 
-data Cell a = Cell {-# UNPACK #-} !(a, a, a, a)
+data Cell a = Cell {-# UNPACK #-} !(a, a, a, a, a, a)
   deriving stock (Ord, Eq, Read, Functor, Show, Generic)
 
 cell :: a -> a -> a -> a -> Cell a
-cell n e s w = Cell (n, e, s, w)
+cell n e s w = Cell ()
 
 writeCell_ :: Cell a -> Direction -> a -> Cell a
 writeCell_ (Cell (n, e, s, w)) vn v =
