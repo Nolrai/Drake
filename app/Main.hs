@@ -31,7 +31,7 @@ import Graphics.Gloss.Interface.IO.Game as G
     MouseButton (RightButton),
     Picture,
     SpecialKey (KeyEsc, KeySpace),
-    blue,
+    black,
     playIO,
   )
 import Relude as R
@@ -84,7 +84,7 @@ runGloss ::
   (drawInfo -> Event -> StateT world IO ()) ->
   StateT world IO () ->
   IO ()
-runGloss drawInfo start toDrawable onEvent onTick = playIO FullScreen blue 16 start onDraw (\ event -> (onEvent drawInfo event `execStateT`)) (const (onTick `execStateT`))
+runGloss drawInfo start toDrawable onEvent onTick = playIO FullScreen black 16 start onDraw (\ event -> (onEvent drawInfo event `execStateT`)) (const (onTick `execStateT`))
   where
     onDraw :: world -> IO G.Picture
     onDraw world = pure $ draw drawInfo (world ^. toDrawable)
@@ -160,7 +160,7 @@ readMatFile filename =
       Right r -> pure r
 
 defaultSize :: (Int, Int)
-defaultSize = (20, 20)
+defaultSize = (10, 10)
 
 blankTorus :: ((Int, Int), Torus (Cell RedBlack))
 blankTorus = defaultTorus blankCell
