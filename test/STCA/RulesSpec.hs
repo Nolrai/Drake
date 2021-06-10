@@ -18,8 +18,8 @@ import STCA.Cell (Cell ())
 import STCA.CellSpec ()
 import STCA.GreaterCell
 import STCA.Rules (Body (..), LAR (..), LhsTemplate (), RedBlack (..), RhsTemplate (), lhzBase, mkLHS, mkRHS, readBody, rotateLar, toBody, toHead, toggle, vnDiff)
-import STCA.VonNeumann (VonNeumann)
-import STCA.VonNeumannSpec ()
+import STCA.Direction (Direction)
+import STCA.DirectionSpec ()
 import Test.Hspec (Spec, describe, it, shouldBe, shouldMatchList, shouldNotBe, shouldSatisfy)
 import Test.QuickCheck (Arbitrary (..), CoArbitrary, Function, NonEmptyList (..), genericShrink, property, (.&&.))
 import Test.QuickCheck.Gen as QG
@@ -66,9 +66,9 @@ spec = do
         \lar -> isLens (readBody lar :: Lens' (Body RedBlack) RedBlack)
   describe "LhsTemplate" $ do
     describe "toHead" $ do
-      it "is an setter" . property $ isSetter (toHead :: Lens' LhsTemplate VonNeumann)
-      it "is an traversal" . property $ isTraversal (toHead :: Lens' LhsTemplate VonNeumann)
-      it "is an lens" . property $ isLens (toHead :: Lens' LhsTemplate VonNeumann)
+      it "is an setter" . property $ isSetter (toHead :: Lens' LhsTemplate Direction)
+      it "is an traversal" . property $ isTraversal (toHead :: Lens' LhsTemplate Direction)
+      it "is an lens" . property $ isLens (toHead :: Lens' LhsTemplate Direction)
     describe "toBody" $ do
       it "is an setter" . property $ isSetter (toBody :: Lens' LhsTemplate (Body RedBlack))
       it "is an traversal" . property $ isTraversal (toBody :: Lens' LhsTemplate (Body RedBlack))

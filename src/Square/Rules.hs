@@ -37,7 +37,7 @@ import Relude
     ($),
     (.),
   )
-import STCA.VonNeumann (VonNeumann (..), inv, rotateClockwise)
+import STCA.Direction (Direction (..), inv, rotateClockwise)
 
 data LAR
   = L -- Left
@@ -57,10 +57,10 @@ toggle Black = Red
 data Body a = Body {_atL :: a, _atA :: a, _atR :: a}
   deriving stock (Eq, Ord, Show, Read, Generic)
 
-data LhsTemplate = LHS {_lhsHead :: VonNeumann, _lhsBody :: Body RedBlack}
+data LhsTemplate = LHS {_lhsHead :: Direction, _lhsBody :: Body RedBlack}
   deriving stock (Eq, Ord, Show, Read, Generic)
 
-mkLHS :: VonNeumann -> Body RedBlack -> LhsTemplate
+mkLHS :: Direction -> Body RedBlack -> LhsTemplate
 mkLHS = LHS
 
 data RhsTemplate = RHS {_rhsHead :: LAR, _rhsBody :: Body RedBlack}
@@ -86,16 +86,16 @@ lhzBase =
     (Body Black Black Red, RHS A (Body Black Black Red)) -- toggle memory
   ]
 
-rotateLar :: LAR -> VonNeumann -> VonNeumann
+rotateLar :: LAR -> Direction -> Direction
 rotateLar L = rotateClockwise
 rotateLar A = inv
 rotateLar R = rotateClockwise . rotateClockwise . rotateClockwise
 
 -- Find the LAR that gets your from src to target ('Nothing' means tgt = src)
-vnDiff :: VonNeumann -> VonNeumann -> Maybe LAR
+vnDiff :: Direction -> Direction -> Maybe LAR
 vnDiff src tgt = M.lookup (src, tgt) vDiffMap
 
-vDiffMap :: Map (VonNeumann, VonNeumann) LAR
+vDiffMap :: Map (Direction, Direction) LAR
 vDiffMap = M.fromList $
   do
     src <- [N, E, S, W]
@@ -106,7 +106,7 @@ class HeadBody a h b | a -> b, a -> h where
   toBody :: Lens' a (Body b)
   toHead :: Lens' a h
 
-instance HeadBody LhsTemplate VonNeumann RedBlack where
+instance HeadBody LhsTemplate Direction RedBlack where
   toBody = cloneLens lhsBody
   toHead = cloneLens lhsHead
 

@@ -42,11 +42,11 @@ instance Draw (Cell RedBlack) Float where
 
 instance Draw (Cell RedBlack, Bool) Float where
   draw tileSize (c, b) = 
-    pictures $ coloredTriangle tileSize toColor' <$> allVonNeumann
+    pictures $ coloredTriangle tileSize toColor' <$> allDirections
     where
       toColor' vn = toColor b (c ^. subcell vn)
 
-coloredTriangle :: Float -> (VonNeumann -> Color) -> VonNeumann -> Picture
+coloredTriangle :: Float -> (Direction -> Color) -> Direction -> Picture
 coloredTriangle tileSize cellColor vn = color (cellColor vn) $ rotatedTriangle tileSize vn
 
 toColor :: Bool -> RedBlack -> Color
@@ -55,7 +55,7 @@ toColor True Black = blue
 toColor False Red = dim (dark red)
 toColor False Black = black
 
-rotatedTriangle :: Float -> VonNeumann -> Picture
+rotatedTriangle :: Float -> Direction -> Picture
 rotatedTriangle tileSize vn = 
   rotate angle (triangleNorth tileSize)
   where

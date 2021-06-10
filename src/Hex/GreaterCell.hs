@@ -18,7 +18,7 @@ where
 import Control.Lens (Iso', Lens', iso, lens)
 import Relude (Eq, Functor, Generic, Ord, Read, Show, (.))
 import STCA.Cell (Cell, subcell)
-import STCA.VonNeumann (VonNeumann (..))
+import STCA.Direction (Direction (..))
 
 {-# ANN module "HLint: ignore Use newtype instead of data" #-}
 
@@ -37,6 +37,6 @@ inside = lens (\(GreaterCell (i, _)) -> i) (\(GreaterCell (_, o)) i -> GreaterCe
 outside :: Lens' (GreaterCell a) (Cell a)
 outside = lens (\(GreaterCell (_, o)) -> o) (\(GreaterCell (i, _)) o -> GreaterCell (i, o))
 
-greaterToSubcell :: InsideOutside -> VonNeumann -> Lens' (GreaterCell a) a
+greaterToSubcell :: InsideOutside -> Direction -> Lens' (GreaterCell a) a
 greaterToSubcell Inside vn = inside . subcell vn
 greaterToSubcell Outside vn = outside . subcell vn

@@ -118,7 +118,7 @@ updateWorld =
     (new :: TorusEx) <- newBoards <$> uniformM g
     board .= new
 
-handleMouseButtonUp :: ((Int, Int), VonNeumann) -> StateT World IO ()
+handleMouseButtonUp :: ((Int, Int), Direction) -> StateT World IO ()
 handleMouseButtonUp (cellIndex, vn) =
   do
     liftIO . traceIO $ "toggle at " <> show (cellIndex, vn)
@@ -138,7 +138,7 @@ updateHeadAt cellIndex =
 
 -- get the index into the sub cell the mouse is over
 -- note that because of how Torus works this still "works" even if the mouse is not over the matrix.
-toIndex :: Float -> (Float, Float) -> ((Int, Int), VonNeumann)
+toIndex :: Float -> (Float, Float) -> ((Int, Int), Direction)
 toIndex tileSize (posX', posY') = ((tilesX, tilesY), vn)
   where
     (posX, posY) = (posX' + tileSize / 2, posY')

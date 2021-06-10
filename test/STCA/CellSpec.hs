@@ -10,15 +10,15 @@ where
 import Control.Lens (Lens', from, (^.))
 import Control.Lens.Properties (isLens, isSetter, isTraversal)
 import STCA.Cell (Cell (Cell), cell, subcell, toCell)
-import STCA.VonNeumann (VonNeumann)
-import STCA.VonNeumannSpec ()
+import STCA.Direction (Direction)
+import STCA.DirectionSpec ()
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Test.QuickCheck (Arbitrary (..), CoArbitrary, Function, property)
 import Prelude
 
--- instance of the Arbitrary typeclass for VonNeumann .
+-- instance of the Arbitrary typeclass for Direction .
 
-subcell' :: VonNeumann -> Lens' (Cell Bool) Bool
+subcell' :: Direction -> Lens' (Cell Bool) Bool
 subcell' = subcell
 
 spec :: Spec
@@ -28,7 +28,7 @@ spec =
       it "cell to function to cell cancels" . property $
         \(c :: Cell Int) -> c ^. (from toCell . toCell) `shouldBe` c
       it "to function to cell to function cancels" . property $
-        \(f :: VonNeumann -> Int) -> f ^. (toCell . from toCell) `shouldBe` f
+        \(f :: Direction -> Int) -> f ^. (toCell . from toCell) `shouldBe` f
     describe "subcell" $ do
       it "is an setter" . property $ \vn -> isSetter $ subcell' vn
       it "is an traversal" . property $ \vn -> isTraversal $ subcell' vn

@@ -5,7 +5,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module STCA
-  ( VonNeumann (..),
+  ( Direction (..),
     offset,
     Cell (),
     cell,
@@ -22,7 +22,7 @@ module STCA
     isLhzHead,
     lhzMap,
     RedBlack (..),
-    allVonNeumann,
+    allDirections,
     wideStep,
     TorusEx,
     torus,
@@ -62,14 +62,14 @@ import STCA.Rules
     toggle,
     vnDiff,
   )
-import STCA.VonNeumann (VonNeumann (..), allVonNeumann, inv, offset)
+import STCA.Direction (Direction (..), allDirections, inv, offset)
 
--- given a x,y pair and a VonNeumann direction access the sub cell of the cell at that index.
-subCellOfTorus :: (Int, Int) -> VonNeumann -> Lens' (Torus (Cell a)) a
+-- given a x,y pair and a Direction direction access the sub cell of the cell at that index.
+subCellOfTorus :: (Int, Int) -> Direction -> Lens' (Torus (Cell a)) a
 subCellOfTorus pos vn = read2d pos . subcell vn
 
 -- given thesame info as above, toggle the subcell from red to black or back again.
-toggleSubCellOnTorus :: (Int, Int) -> VonNeumann -> Torus (Cell RedBlack) -> Torus (Cell RedBlack)
+toggleSubCellOnTorus :: (Int, Int) -> Direction -> Torus (Cell RedBlack) -> Torus (Cell RedBlack)
 toggleSubCellOnTorus pos vn = over (subCellOfTorus pos vn) toggle
 
 -- A greaterCell is a cell and its sourounding sub-cells
@@ -82,7 +82,7 @@ greaterCellFromTorus pos = pairLens readInside readOutside . greaterCell
     readOutside = sequenceL cellOfLenses
     cellOfLenses :: Cell (ALens' (Torus (Cell RedBlack)) RedBlack)
     cellOfLenses = fromVN ^. toCell
-    fromVN :: VonNeumann -> ALens' (Torus (Cell RedBlack)) RedBlack
+    fromVN :: Direction -> ALens' (Torus (Cell RedBlack)) RedBlack
     fromVN vn = read2d (offset pos vn) . subcell (inv vn)
 
 -- Given two lenses from the same type, make a lense from that type to the pair of them
@@ -123,30 +123,30 @@ lhsToTemplate :: LhsTemplate -> GreaterCell RedBlack
 lhsToTemplate lhs =
   (inside' ^. toCell, outside' ^. toCell) ^. greaterCell
   where
-    inside', outside' :: VonNeumann -> RedBlack
+    inside', outside' :: Direction -> RedBlack
     -- the inside is filled where the template is Black
     inside' vn = maybe Red (\lar -> lhs ^. toBody . readBody lar) ((lhs ^. toHead) `vnDiff` vn)
     outside' vn = if lhs ^. toHead == vn then Black else inside' vn -- the outside is also filled in at the head
 
-rhsToTemplate :: VonNeumann -> RhsTemplate -> GreaterCell RedBlack
+rhsToTemplate :: Direction -> RhsTemplate -> GreaterCell RedBlack
 rhsToTemplate old_head rhs =
   (inside' ^. toCell, outside' ^. toCell) ^. greaterCell
   where
-    new_head :: VonNeumann
+    new_head :: Direction
     new_head = (rhs ^. toHead) `rotateLar` old_head
     -- the outside is filled only where the template is Black
-    outside', inside' :: VonNeumann -> RedBlack
+    outside', inside' :: Direction -> RedBlack
     outside' vn = maybe Red (\lar -> rhs ^. toBody . readBody lar) (new_head `vnDiff` vn)
     -- the inside also filled in at the head the head
     inside' vn = if new_head == vn then Black else outside' vn
 
-lhzMap :: Map (GreaterCell RedBlack) (GreaterCell RedBlack, VonNeumann)
+lhzMap :: Map (GreaterCell RedBlack) (GreaterCell RedBlack, Direction)
 lhzMap = Map.fromList lhzList
 
 -- for testing
-lhzList :: [(GreaterCell RedBlack, (GreaterCell RedBlack, VonNeumann))]
+lhzList :: [(GreaterCell RedBlack, (GreaterCell RedBlack, Direction))]
 lhzList = do
-  vn <- allVonNeumann
+  vn <- allDirections
   (l, r) <- lhzBase
   pure (lhsToTemplate (mkLHS vn l), (rhsToTemplate vn r, (r ^. toHead) `rotateLar` vn))
 
@@ -171,15 +171,15 @@ applyRule old pos =
       maybe
         (id, Set.delete pos)
         (applyRuleResult pos)
-        (old ^. lookupGreaterCell pos :: Maybe (GreaterCell RedBlack, VonNeumann))
+        (old ^. lookupGreaterCell pos :: Maybe (GreaterCell RedBlack, Direction))
 
 applyRuleResult ::
   (Int, Int) ->
-  (GreaterCell RedBlack, VonNeumann) ->
+  (GreaterCell RedBlack, Direction) ->
   (Torus (Cell RedBlack) -> Torus (Cell RedBlack), Set (Int, Int) -> Set (Int, Int))
 applyRuleResult pos = applyRuleToTorus pos *** applyRuleToHeadSet pos
 
-lookupGreaterCell :: (Int, Int) -> Getter TorusEx (Maybe (GreaterCell RedBlack, VonNeumann))
+lookupGreaterCell :: (Int, Int) -> Getter TorusEx (Maybe (GreaterCell RedBlack, Direction))
 lookupGreaterCell pos = torus . greaterCellFromTorus pos . to (`Map.lookup` lhzMap)
 
 isLhzHead :: (Int, Int) -> Getter TorusEx Bool
@@ -188,7 +188,7 @@ isLhzHead pos = lookupGreaterCell pos . to isJust
 applyRuleToTorus :: (Int, Int) -> GreaterCell RedBlack -> Torus (Cell RedBlack) -> Torus (Cell RedBlack)
 applyRuleToTorus pos newGC = greaterCellFromTorus pos .~ newGC
 
-applyRuleToHeadSet :: (Int, Int) -> VonNeumann -> Set (Int, Int) -> Set (Int, Int)
+applyRuleToHeadSet :: (Int, Int) -> Direction -> Set (Int, Int) -> Set (Int, Int)
 applyRuleToHeadSet pos newHead = Set.insert (pos `offset` newHead) . Set.delete pos
 
 mkTorusEx :: Torus (Cell RedBlack) -> TorusEx

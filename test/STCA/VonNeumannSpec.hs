@@ -2,9 +2,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module STCA.VonNeumannSpec (spec) where
+module STCA.DirectionSpec (spec) where
 
-import STCA.VonNeumann (VonNeumann (..), allVonNeumann, inv, offset, rotateClockwise)
+import STCA.Direction (Direction (..), allDirections, inv, offset, rotateClockwise)
 import Test.Hspec
 import Test.QuickCheck (Arbitrary (..), CoArbitrary, Function (..), functionMap, property)
 import Test.QuickCheck.Gen as QG (elements)
@@ -19,10 +19,10 @@ n ^ m = n P.^ m
 spec :: Spec
 spec =
   do
-    describe "allVonNeumann" $ do
-      it "contains all the VonNeumann values once" . property $
-        \vn -> length (filter (== vn) allVonNeumann) `shouldBe` 1
-      it "has length 4" $ length allVonNeumann `shouldBe` 4
+    describe "allDirections" $ do
+      it "contains all the Direction values once" . property $
+        \vn -> length (filter (== vn) allDirections) `shouldBe` 1
+      it "has length 4" $ length allDirections `shouldBe` 4
     describe "inv" $ do
       it "is involution" . property $
         \vn -> inv (inv vn) `shouldBe` vn
@@ -41,24 +41,24 @@ spec =
         let squared_distance (a, b) (c, d) = ((a - c) ^ 2 + (b - d) ^ 2 :: Int)
          in \p vn -> (p `squared_distance` offset p vn) `shouldBe` 1
 
-instance Arbitrary VonNeumann where
-  arbitrary = QG.elements allVonNeumann
+instance Arbitrary Direction where
+  arbitrary = QG.elements allDirections
   shrink N = []
   shrink E = [N]
   shrink S = [E, N]
   shrink W = [S, E, N]
 
-instance CoArbitrary VonNeumann
+instance CoArbitrary Direction
 
-instance Function VonNeumann
+instance Function Direction
 
-instance Eq a => Eq (VonNeumann -> a) where
-  a == b = (a <$> allVonNeumann) == (b <$> allVonNeumann)
+instance Eq a => Eq (Direction -> a) where
+  a == b = (a <$> allDirections) == (b <$> allDirections)
 
-instance Show a => Show (VonNeumann -> a) where
-  show f = T.show $ (\vn -> (vn, f vn)) <$> allVonNeumann
+instance Show a => Show (Direction -> a) where
+  show f = T.show $ (\vn -> (vn, f vn)) <$> allDirections
 
-instance Function a => Function (VonNeumann -> a) where
+instance Function a => Function (Direction -> a) where
   function = functionMap aToB bToA
     where
       aToB f = (f N, f E, f S, f W)

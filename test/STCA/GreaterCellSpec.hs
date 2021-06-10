@@ -13,8 +13,8 @@ import Control.Lens.Properties (isIso, isLens, isSetter, isTraversal)
 import STCA.Cell (Cell (Cell), cell, subcell, toCell)
 import STCA.CellSpec ()
 import STCA.GreaterCell
-import STCA.VonNeumann (VonNeumann)
-import STCA.VonNeumannSpec ()
+import STCA.Direction (Direction)
+import STCA.DirectionSpec ()
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Test.QuickCheck (Arbitrary (..), CoArbitrary, Function, property)
 import Test.QuickCheck.Gen as QG
@@ -23,7 +23,7 @@ import Prelude
 greaterCell' :: Iso' (Cell Bool, Cell Bool) (GreaterCell Bool)
 greaterCell' = greaterCell
 
-greaterToSubcell' :: InsideOutside -> VonNeumann -> Lens' (GreaterCell Bool) Bool
+greaterToSubcell' :: InsideOutside -> Direction -> Lens' (GreaterCell Bool) Bool
 greaterToSubcell' = greaterToSubcell
 
 spec = do

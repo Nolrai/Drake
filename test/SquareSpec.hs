@@ -16,7 +16,7 @@ import STCA.GreaterCell (GreaterCell)
 import STCA.GreaterCellSpec ()
 import STCA.Rules (RedBlack)
 import STCA.RulesSpec ()
-import STCA.VonNeumannSpec ()
+import STCA.DirectionSpec ()
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Test.QuickCheck (property)
 import Prelude
