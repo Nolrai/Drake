@@ -125,7 +125,7 @@ lhsToTemplate lhs =
   where
     inside', outside' :: Direction -> RedBlack
     -- the inside is filled where the template is Black
-    inside' vn = maybe Red (\lar -> lhs ^. toBody . readBody lar) ((lhs ^. toHead) `vnDiff` vn)
+    inside' vn = maybe Red (\rDir -> lhs ^. toBody . readBody rDir) ((lhs ^. toHead) `vnDiff` vn)
     outside' vn = if lhs ^. toHead == vn then Black else inside' vn -- the outside is also filled in at the head
 
 rhsToTemplate :: Direction -> RhsTemplate -> GreaterCell RedBlack
@@ -136,7 +136,7 @@ rhsToTemplate old_head rhs =
     new_head = (rhs ^. toHead) `rotateLar` old_head
     -- the outside is filled only where the template is Black
     outside', inside' :: Direction -> RedBlack
-    outside' vn = maybe Red (\lar -> rhs ^. toBody . readBody lar) (new_head `vnDiff` vn)
+    outside' vn = maybe Red (\rDir -> rhs ^. toBody . readBody rDir) (new_head `vnDiff` vn)
     -- the inside also filled in at the head the head
     inside' vn = if new_head == vn then Black else outside' vn
 

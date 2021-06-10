@@ -17,7 +17,7 @@ import Data.Set as Set
 import STCA.Cell (Cell ())
 import STCA.CellSpec ()
 import STCA.GreaterCell
-import STCA.Rules (Body (..), LAR (..), LhsTemplate (), RedBlack (..), RhsTemplate (), lhzBase, mkLHS, mkRHS, readBody, rotateLar, toBody, toHead, toggle, vnDiff)
+import STCA.Rules (Body (..), RelativeDirection (..), LhsTemplate (), RedBlack (..), RhsTemplate (), lhzBase, mkLHS, mkRHS, readBody, rotateLar, toBody, toHead, toggle, vnDiff)
 import STCA.Direction (Direction)
 import STCA.DirectionSpec ()
 import Test.Hspec (Spec, describe, it, shouldBe, shouldMatchList, shouldNotBe, shouldSatisfy)
@@ -25,7 +25,7 @@ import Test.QuickCheck (Arbitrary (..), CoArbitrary, Function, NonEmptyList (..)
 import Test.QuickCheck.Gen as QG
 import Prelude
 
-mirror :: LAR -> LAR
+mirror :: RelativeDirection -> RelativeDirection
 mirror L = R
 mirror A = A
 mirror R = L
@@ -35,19 +35,19 @@ spec = do
   describe "Lar" $ do
     describe "rotateLar" $ do
       it "is root of involution" . property $
-        \lar vn -> let f = rotateLar lar in (f . f . f . f) vn `shouldBe` vn
+        \rDir vn -> let f = rotateLar rDir in (f . f . f . f) vn `shouldBe` vn
       it "is derangement" . property $
-        \lar vn -> rotateLar lar vn `shouldNotBe` vn
+        \rDir vn -> rotateLar rDir vn `shouldNotBe` vn
       it " . mirror is inverse of rotateLar" . property $
-        \lar vn -> rotateLar (mirror lar) (rotateLar lar vn) `shouldBe` vn
+        \rDir vn -> rotateLar (mirror rDir) (rotateLar rDir vn) `shouldBe` vn
       it " is inverse of rotateLar . mirror" . property $
-        \lar vn -> rotateLar lar (rotateLar (mirror lar) vn) `shouldBe` vn
+        \rDir vn -> rotateLar rDir (rotateLar (mirror rDir) vn) `shouldBe` vn
     describe "mirror" $ do
       it "is involution" . property $
-        \lar -> mirror (mirror lar) `shouldBe` lar
+        \rDir -> mirror (mirror rDir) `shouldBe` rDir
     describe "vnDiff" $ do
       it "is converse of rotateLar" . property $
-        \vn lar -> (vn `vnDiff` rotateLar lar vn) `shouldBe` Just lar
+        \vn rDir -> (vn `vnDiff` rotateLar rDir vn) `shouldBe` Just rDir
       it "recognizes equality" . property $
         \vn -> vn `vnDiff` vn `shouldBe` Nothing
   describe "RedBlack" $ do
@@ -59,11 +59,11 @@ spec = do
   describe "Body" $
     describe "readBody" $ do
       it "is an setter" . property $
-        \lar -> isSetter (readBody lar :: Lens' (Body RedBlack) RedBlack)
+        \rDir -> isSetter (readBody rDir :: Lens' (Body RedBlack) RedBlack)
       it "is an traversal" . property $
-        \lar -> isTraversal (readBody lar :: Lens' (Body RedBlack) RedBlack)
+        \rDir -> isTraversal (readBody rDir :: Lens' (Body RedBlack) RedBlack)
       it "is an lens" . property $
-        \lar -> isLens (readBody lar :: Lens' (Body RedBlack) RedBlack)
+        \rDir -> isLens (readBody rDir :: Lens' (Body RedBlack) RedBlack)
   describe "LhsTemplate" $ do
     describe "toHead" $ do
       it "is an setter" . property $ isSetter (toHead :: Lens' LhsTemplate Direction)
@@ -75,9 +75,9 @@ spec = do
       it "is an lens" . property $ isLens (toBody :: Lens' LhsTemplate (Body RedBlack))
   describe "RhsTemplate" $ do
     describe "toHead" $ do
-      it "is an setter" . property $ isSetter (toHead :: Lens' RhsTemplate LAR)
-      it "is an traversal" . property $ isTraversal (toHead :: Lens' RhsTemplate LAR)
-      it "is an lens" . property $ isLens (toHead :: Lens' RhsTemplate LAR)
+      it "is an setter" . property $ isSetter (toHead :: Lens' RhsTemplate RelativeDirection)
+      it "is an traversal" . property $ isTraversal (toHead :: Lens' RhsTemplate RelativeDirection)
+      it "is an lens" . property $ isLens (toHead :: Lens' RhsTemplate RelativeDirection)
     describe "toBody" $ do
       it "is an setter" . property $ isSetter (toBody :: Lens' RhsTemplate (Body RedBlack))
       it "is an traversal" . property $ isTraversal (toBody :: Lens' RhsTemplate (Body RedBlack))
@@ -108,16 +108,16 @@ spec = do
 nubSort :: [Int] -> [Int]
 nubSort = Set.toList . Set.fromList
 
-instance Arbitrary LAR where
+instance Arbitrary RelativeDirection where
   arbitrary = QG.elements [L, A, R]
 
   shrink L = []
   shrink A = [L]
   shrink R = [A, L]
 
-instance CoArbitrary LAR
+instance CoArbitrary RelativeDirection
 
-instance Function LAR
+instance Function RelativeDirection
 
 instance Arbitrary RedBlack where
   arbitrary = QG.elements [Red, Black]

@@ -5,7 +5,7 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module STCA.GreaterCell
+module Hex.GreaterCell
   ( GreaterCell (),
     InsideOutside (Inside, Outside),
     greaterToSubcell,
@@ -17,8 +17,8 @@ where
 
 import Control.Lens (Iso', Lens', iso, lens)
 import Relude (Eq, Functor, Generic, Ord, Read, Show, (.))
-import STCA.Cell (Cell, subcell)
-import STCA.Direction (Direction (..))
+import Hex.Cell (Cell, subcell)
+import Hex.Direction (Direction (..))
 
 {-# ANN module "HLint: ignore Use newtype instead of data" #-}
 
@@ -38,5 +38,5 @@ outside :: Lens' (GreaterCell a) (Cell a)
 outside = lens (\(GreaterCell (_, o)) -> o) (\(GreaterCell (i, _)) o -> GreaterCell (i, o))
 
 greaterToSubcell :: InsideOutside -> Direction -> Lens' (GreaterCell a) a
-greaterToSubcell Inside vn = inside . subcell vn
-greaterToSubcell Outside vn = outside . subcell vn
+greaterToSubcell Inside dir = inside . subcell dir
+greaterToSubcell Outside dir = outside . subcell dir

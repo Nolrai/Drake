@@ -13,7 +13,7 @@ module STCA.Rules
     toBody,
     toHead,
     RhsTemplate (),
-    LAR (..),
+    RelativeDirection (..),
     LhsTemplate (),
     mkLHS,
     mkRHS,
@@ -39,7 +39,7 @@ import Relude
   )
 import STCA.Direction (Direction (..), inv, rotateClockwise)
 
-data LAR
+data RelativeDirection
   = L -- Left
   | A -- Across
   | R -- Right
@@ -63,17 +63,17 @@ data LhsTemplate = LHS {_lhsHead :: Direction, _lhsBody :: Body RedBlack}
 mkLHS :: Direction -> Body RedBlack -> LhsTemplate
 mkLHS = LHS
 
-data RhsTemplate = RHS {_rhsHead :: LAR, _rhsBody :: Body RedBlack}
+data RhsTemplate = RHS {_rhsHead :: RelativeDirection, _rhsBody :: Body RedBlack}
   deriving stock (Eq, Ord, Show, Read, Generic)
 
-mkRHS :: LAR -> Body RedBlack -> RhsTemplate
+mkRHS :: RelativeDirection -> Body RedBlack -> RhsTemplate
 mkRHS = RHS
 
 makeLenses ''Body
 makeLenses ''LhsTemplate
 makeLenses ''RhsTemplate
 
-readBody :: LAR -> Lens' (Body a) a
+readBody :: RelativeDirection -> Lens' (Body a) a
 readBody L = atL
 readBody A = atA
 readBody R = atR
@@ -86,21 +86,21 @@ lhzBase =
     (Body Black Black Red, RHS A (Body Black Black Red)) -- toggle memory
   ]
 
-rotateLar :: LAR -> Direction -> Direction
+rotateLar :: RelativeDirection -> Direction -> Direction
 rotateLar L = rotateClockwise
 rotateLar A = inv
 rotateLar R = rotateClockwise . rotateClockwise . rotateClockwise
 
--- Find the LAR that gets your from src to target ('Nothing' means tgt = src)
-vnDiff :: Direction -> Direction -> Maybe LAR
+-- Find the RelativeDirection that gets your from src to target ('Nothing' means tgt = src)
+vnDiff :: Direction -> Direction -> Maybe RelativeDirection
 vnDiff src tgt = M.lookup (src, tgt) vDiffMap
 
-vDiffMap :: Map (Direction, Direction) LAR
+vDiffMap :: Map (Direction, Direction) RelativeDirection
 vDiffMap = M.fromList $
   do
     src <- [N, E, S, W]
-    lar <- [L, A, R]
-    pure ((src, lar `rotateLar` src), lar)
+    rDir <- [L, A, R]
+    pure ((src, rDir `rotateLar` src), rDir)
 
 class HeadBody a h b | a -> b, a -> h where
   toBody :: Lens' a (Body b)
@@ -110,6 +110,6 @@ instance HeadBody LhsTemplate Direction RedBlack where
   toBody = cloneLens lhsBody
   toHead = cloneLens lhsHead
 
-instance HeadBody RhsTemplate LAR RedBlack where
+instance HeadBody RhsTemplate RelativeDirection RedBlack where
   toBody = cloneLens rhsBody
   toHead = cloneLens rhsHead
