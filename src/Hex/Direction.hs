@@ -37,11 +37,12 @@ inv ZX = XZ
 inv YX = XY
 
 offset :: (Int, Int) -> Direction -> (Int, Int)
-offset (x, y) XZ = (x+1,y)
-offset (x, y) XY = (x+1,y-1)
-offset (x, y) ZY = (x,y-1)
-offset (x, y) ZX = (x-1,y)
-offset (x, y) YX = (x-1,y+)
+offset (x, y) YZ = (x  , y+1)
+offset (x, y) XZ = (x+1, y  )
+offset (x, y) XY = (x+1, y-1)
+offset (x, y) ZY = (x  , y-1)
+offset (x, y) ZX = (x-1, y  )
+offset (x, y) YX = (x-1, y+1)
 
 rotateClockwise :: Direction -> Direction
 rotateClockwise YZ = XZ 

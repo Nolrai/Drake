@@ -16,28 +16,32 @@ import Hex.Direction (Direction (..))
 data Cell a = Cell {-# UNPACK #-} !(a, a, a, a, a, a)
   deriving stock (Ord, Eq, Read, Functor, Show, Generic)
 
-cell :: a -> a -> a -> a -> Cell a
-cell n e s w = Cell ()
+cell :: a -> a -> a -> a -> a -> a -> Cell a
+cell yz xz xy zy zx yx = Cell (yz, xz, xy, zy, zx, yx)
 
 writeCell_ :: Cell a -> Direction -> a -> Cell a
-writeCell_ (Cell (n, e, s, w)) vn v =
-  case vn of
-    N -> Cell (v, e, s, w)
-    E -> Cell (n, v, s, w)
-    S -> Cell (n, e, v, w)
-    W -> Cell (n, e, s, v)
+writeCell_ (Cell (yz, xz, xy, zy, zx, yx)) dir v =
+  case dir of
+    YZ -> Cell (v, xz, xy, zy, zx, yx)
+    XZ -> Cell (yz, v, xy, zy, zx, yx)
+    XY -> Cell (yz, xz, v, zy, zx, yx)
+    ZY -> Cell (yz, xz, xy, v, zx, yx)
+    ZX -> Cell (yz, xz, xy, zy, v, yx)
+    YX -> Cell (yz, xz, xy, zy, zx, v)
 
 readCell_ :: Cell a -> Direction -> a
-readCell_ (Cell (n, _, _, _)) N = n
-readCell_ (Cell (_, e, _, _)) E = e
-readCell_ (Cell (_, _, s, _)) S = s
-readCell_ (Cell (_, _, _, w)) W = w
+readCell_ (Cell (yz, _, _, _, _, _)) YZ = yz
+readCell_ (Cell (_, xz, _, _, _, _)) XZ = xz
+readCell_ (Cell (_, _, xy, _, _, _)) XY = xy
+readCell_ (Cell (_, _, _, zy, _, _)) ZY = zy
+readCell_ (Cell (_, _, _, _, zx, _)) ZX = zx
+readCell_ (Cell (_, _, _, _, _, yx)) YX = yx
 
 subcell :: Direction -> Lens' (Cell a) a
-subcell vn = lens (`readCell_` vn) (`writeCell_` vn)
+subcell dir = lens (`readCell_` dir) (`writeCell_` dir)
 
 toCell_ :: (Direction -> a) -> Cell a
-toCell_ f = cell (f N) (f E) (f S) (f W)
+toCell_ f = cell (f YZ) (f XZ) (f XY) (f ZY) (f ZX) (f YX)
 
 toCell :: Iso' (Direction -> a) (Cell a)
-toCell = iso toCell_ (\c vn -> c ^. subcell vn)
+toCell = iso toCell_ (\c dir -> c ^. subcell dir)
