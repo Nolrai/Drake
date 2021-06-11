@@ -5,11 +5,11 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module STCA.Cell (Cell (Cell), cell, toCell, subcell) where
+module Square.Cell (Cell (Cell), cell, toCell, subcell) where
 
 import Control.Lens
 import Relude (Eq, Functor, Generic, Ord, Read, Show)
-import STCA.Direction (Direction (..))
+import Square.Direction (Direction (..))
 
 {-# ANN module "HLint: ignore Use newtype instead of data" #-}
 

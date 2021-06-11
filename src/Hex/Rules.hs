@@ -115,24 +115,18 @@ turnRight =
   ]
 mirror :: [MoveRuleBase]
 mirror =
-  [ (Body Black Black Black Red Red, Nothing)
-  , (Body Red Red Black Black Black, Nothing)
+  [ (Body Black Black Red Red Red, Nothing)
+  , (Body Red Red Black Black Red, Nothing)
   ]
 
-toggle = 
+toggleRules = 
   [ (Body Red Black Red Black Red, RHS Nothing (Body Red Black Black Black Red)) -- turn to mirror
-  , (Body Red Black Black Black Red, RHS Nothing (Body Red Black Red Black Red)) -- mirror to turn
+  , (Body Red Black Black Red Red, RHS Nothing (Body Red Black Red Black Red)) -- mirror to turn
   ]
 
-crossRule = 
-
-lhzBase :: [(Body RedBlack, RhsTemplate)]
-lhzBase =
-  [ moveForward,
-    (Body Red Black Red, RHS R (Body Red Red Black)), -- turn Right
-    (Body Red Red Black, RHS L (Body Red Black Red)), -- turn Left (aka co-Turn Right)
-    (Body Black Black Red, RHS A (Body Black Black Red)) -- toggle memory
-  ]
+moveRules :: [(Body RedBlack, RhsTemplate)]
+moveRules =
+  moveForward : turnLeft <> turnRight <> mirror
 
 rotateLar :: RelativeDirection -> Direction -> Direction
 rotateLar SharpLeft = rotateClockwise
@@ -141,7 +135,7 @@ rotateLar Across = inv
 rotateLar WideRight = rotateClockwise . inv
 rotateLar SharpRight = rotateClockwise . rotateClockwise . inv
 
--- Find the RelativeDirection that gets your from src to target ('Nothing' means tgt = src)
+-- Find the RelativeDirection that gets you from src to target by rotateLar ('Nothing' means tgt = src)
 vnDiff :: Direction -> Direction -> Maybe RelativeDirection
 vnDiff src tgt = M.lookup (src, tgt) vDiffMap
 

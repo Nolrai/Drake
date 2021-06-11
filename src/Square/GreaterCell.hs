@@ -5,7 +5,7 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module STCA.GreaterCell
+module Square.GreaterCell
   ( GreaterCell (),
     InsideOutside (Inside, Outside),
     greaterToSubcell,
@@ -17,8 +17,8 @@ where
 
 import Control.Lens (Iso', Lens', iso, lens)
 import Relude (Eq, Functor, Generic, Ord, Read, Show, (.))
-import STCA.Cell (Cell, subcell)
-import STCA.Direction (Direction (..))
+import Square.Cell (Cell, subcell)
+import Square.Direction (Direction (..))
 
 {-# ANN module "HLint: ignore Use newtype instead of data" #-}
 

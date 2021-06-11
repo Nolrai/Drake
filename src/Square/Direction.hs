@@ -4,7 +4,7 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module STCA.Direction (Direction (..), allDirections, inv, offset, rotateClockwise) where
+module Square.Direction (Direction (..), allDirections, inv, offset, rotateClockwise) where
 
 import Relude (Enum, Eq, Generic, Int, Num ((+), (-)), Ord, Read, Show)
 

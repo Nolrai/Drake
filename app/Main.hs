@@ -35,7 +35,8 @@ import Graphics.Gloss.Interface.IO.Game as G
     playIO,
   )
 import Relude as R
-import STCA
+import Hex
+import Square
 import System.Environment (getArgs)
 import System.Random.Stateful
 

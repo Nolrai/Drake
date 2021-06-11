@@ -4,7 +4,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module STCA
+module Square
   ( Direction (..),
     offset,
     Cell (),
@@ -41,15 +41,15 @@ import Data.Set as Set
 import Data.Vector as Vector
 import Drake (Torus, rangeT, read2d, rangeMod)
 import Relude
-import STCA.Cell (Cell (Cell), cell, subcell, toCell)
-import STCA.GreaterCell
+import Square.Cell (Cell (Cell), cell, subcell, toCell)
+import Square.GreaterCell
   ( GreaterCell (),
     greaterCell,
     greaterToSubcell,
     inside,
     outside,
   )
-import STCA.Rules
+import Square.Rules
   ( LhsTemplate,
     RedBlack (..),
     RhsTemplate,
@@ -62,7 +62,7 @@ import STCA.Rules
     toggle,
     vnDiff,
   )
-import STCA.Direction (Direction (..), allDirections, inv, offset)
+import Square.Direction (Direction (..), allDirections, inv, offset)
 
 -- given a x,y pair and a Direction direction access the sub cell of the cell at that index.
 subCellOfTorus :: (Int, Int) -> Direction -> Lens' (Torus (Cell a)) a

@@ -13,7 +13,8 @@ import Data.Set
 import Drake
 import Graphics.Gloss
 import Relude
-import STCA
+import Hex
+import Square
 
 class Draw a b | a -> b where
   draw :: b -> a -> Picture

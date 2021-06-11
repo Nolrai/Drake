@@ -5,7 +5,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module STCA.Rules
+module Square.Rules
   ( lhzBase,
     rotateLar,
     vnDiff,
@@ -37,7 +37,7 @@ import Relude
     ($),
     (.),
   )
-import STCA.Direction (Direction (..), inv, rotateClockwise)
+import Square.Direction (Direction (..), inv, rotateClockwise)
 
 data RelativeDirection
   = L -- Left

@@ -62,11 +62,16 @@ library
                      , random
   exposed-modules:     Drake
                      , Draw
-                     , STCA
-                     , STCA.Cell
-                     , STCA.GreaterCell
-                     , STCA.Rules
-                     , STCA.Direction
+                     , Square
+                     , Square.Cell
+                     , Square.GreaterCell
+                     , Square.Rules
+                     , Square.Direction
+                     , Hex
+                     , Hex.Cell
+                     , Hex.GreaterCell
+                     , Hex.Rules
+                     , Hex.Direction
 
 executable Drake
   import:              common-options
@@ -86,11 +91,16 @@ test-suite Drake-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   other-modules:       DrakeSpec
-                     , STCASpec
-                     , STCA.CellSpec
-                     , STCA.DirectionSpec
-                     , STCA.GreaterCellSpec 
-                     , STCA.RulesSpec
+                     , SquareSpec
+                     , Square.CellSpec
+                     , Square.DirectionSpec
+                     , Square.GreaterCellSpec 
+                     , Square.RulesSpec
+                     , HexSpec
+                     , Hex.CellSpec
+                     , Hex.DirectionSpec
+                     , Hex.GreaterCellSpec 
+                     , Hex.RulesSpec
   build-depends:       Drake
                      , QuickCheck
                      , hspec
