@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module STCA.RulesSpec
+module Square.RulesSpec
   ( spec,
     repeated,
     nubSort,
@@ -14,12 +14,12 @@ import Control.Lens (ALens', Iso', Lens', from)
 import Control.Lens.Properties (isIso, isLens, isSetter, isTraversal)
 import Data.List (isSubsequenceOf)
 import Data.Set as Set
-import STCA.Cell (Cell ())
-import STCA.CellSpec ()
-import STCA.GreaterCell
-import STCA.Rules (Body (..), RelativeDirection (..), LhsTemplate (), RedBlack (..), RhsTemplate (), lhzBase, mkLHS, mkRHS, readBody, rotateLar, toBody, toHead, toggle, vnDiff)
-import STCA.Direction (Direction)
-import STCA.DirectionSpec ()
+import Square.Cell (Cell ())
+import Square.CellSpec ()
+import Square.GreaterCell
+import Square.Rules (Body (..), RelativeDirection (..), LhsTemplate (), RedBlack (..), RhsTemplate (), lhzBase, mkLHS, mkRHS, readBody, rotateLar, toBody, toHead, toggle, vnDiff)
+import Square.Direction (Direction)
+import Square.DirectionSpec ()
 import Test.Hspec (Spec, describe, it, shouldBe, shouldMatchList, shouldNotBe, shouldSatisfy)
 import Test.QuickCheck (Arbitrary (..), CoArbitrary, Function, NonEmptyList (..), genericShrink, property, (.&&.))
 import Test.QuickCheck.Gen as QG
