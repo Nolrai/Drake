@@ -1,6 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module SquareSpec
+module HexSpec
   ( spec,
   )
 where
@@ -9,14 +9,14 @@ import Control.Lens (Lens', (^.))
 import Control.Lens.Properties (isLens, isSetter, isTraversal)
 import Drake (Torus, read2d)
 import DrakeSpec ()
-import Square (greaterCellFromTorus, inside, subCellOfTorus, toggleSubCellOnTorus)
-import Square.Cell (Cell)
-import Square.CellSpec ()
-import Square.GreaterCell (GreaterCell)
-import Square.GreaterCellSpec ()
-import Square.Rules (RedBlack)
-import Square.RulesSpec ()
-import Square.DirectionSpec ()
+import Hex (greaterCellFromTorus, inside, subCellOfTorus, toggleSubCellOnTorus)
+import Hex.Cell (Cell)
+import Hex.CellSpec ()
+import Hex.GreaterCell (GreaterCell)
+import Hex.GreaterCellSpec ()
+import Hex.Rules (RedBlack)
+import Hex.RulesSpec ()
+import Hex.DirectionSpec ()
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Test.QuickCheck (property)
 import Prelude
