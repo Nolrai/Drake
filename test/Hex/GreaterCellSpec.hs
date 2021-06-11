@@ -3,18 +3,18 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module STCA.GreaterCellSpec
+module Hex.GreaterCellSpec
   ( spec,
   )
 where
 
 import Control.Lens (Iso', Lens', from, (^.))
 import Control.Lens.Properties (isIso, isLens, isSetter, isTraversal)
-import STCA.Cell (Cell (Cell), cell, subcell, toCell)
-import STCA.CellSpec ()
-import STCA.GreaterCell
-import STCA.Direction (Direction)
-import STCA.DirectionSpec ()
+import Hex.Cell (Cell (Cell), cell, subcell, toCell)
+import Hex.CellSpec ()
+import Hex.GreaterCell
+import Hex.Direction (Direction)
+import Hex.DirectionSpec ()
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Test.QuickCheck (Arbitrary (..), CoArbitrary, Function, property)
 import Test.QuickCheck.Gen as QG

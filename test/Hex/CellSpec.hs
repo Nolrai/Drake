@@ -2,16 +2,16 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module STCA.CellSpec
+module Hex.CellSpec
   ( spec,
   )
 where
 
 import Control.Lens (Lens', from, (^.))
 import Control.Lens.Properties (isLens, isSetter, isTraversal)
-import STCA.Cell (Cell (Cell), cell, subcell, toCell)
-import STCA.Direction (Direction)
-import STCA.DirectionSpec ()
+import Hex.Cell (Cell (Cell), cell, subcell, toCell)
+import Hex.Direction (Direction)
+import Hex.DirectionSpec ()
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Test.QuickCheck (Arbitrary (..), CoArbitrary, Function, property)
 import Prelude

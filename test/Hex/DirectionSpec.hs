@@ -2,9 +2,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module STCA.DirectionSpec (spec) where
+module Hex.DirectionSpec (spec) where
 
-import STCA.Direction (Direction (..), allDirections, inv, offset, rotateClockwise)
+import Hex.Direction (Direction (..), allDirections, inv, offset, rotateClockwise)
 import Test.Hspec
 import Test.QuickCheck (Arbitrary (..), CoArbitrary, Function (..), functionMap, property)
 import Test.QuickCheck.Gen as QG (elements)
