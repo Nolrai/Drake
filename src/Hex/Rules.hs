@@ -4,19 +4,20 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Hex.Rules
-  ( lhzBase,
-    rotateLar,
+  ( moveRules,
+    toggleRules,
+    rotateBy,
     vnDiff,
     readBody,
     toBody,
     toHead,
-    RhsTemplate (),
     RelativeDirection (..),
     LhsTemplate (),
     mkLHS,
-    mkRHS,
     RedBlack (..),
     toggle,
     Body (..),
@@ -24,36 +25,42 @@ module Hex.Rules
 where
 
 import Control.Lens
-import Data.Map as M (fromList, lookup)
+import Data.Map as Map (Map, fromList, lookup)
 import Relude
   ( Applicative (pure),
     Eq,
     Generic,
     Map,
-    Maybe,
     Ord,
     Read,
     Show,
     ($),
     (.),
-    take,
-    iterate,
+    (<>),
+    id,
+    executingState,
+    flip,
+    (/=)
   )
+import Data.Maybe
 import Hex.Direction (Direction (..), inv, rotateClockwise, allDirections)
+import Hex.Cell
+import Data.Array
 
 data RelativeDirection
   = SharpLeft
-  | WideLeft
+  | DiagonalLeft
   | Across
-  | WideRight
+  | DiagonalRight
   | SharpRight
   deriving stock (Eq, Ord, Show, Read, Generic)
 
+allRelativeDirections :: [RelativeDirection]
 allRelativeDirections = 
   [ SharpLeft
-  , WideLeft
+  , DiagonalLeft
   , Across
-  , WideRight
+  , DiagonalRight
   , SharpRight
   ]
 
@@ -66,94 +73,103 @@ toggle :: RedBlack -> RedBlack
 toggle Red = Black
 toggle Black = Red
 
-data Body a = Body 
+{-# ANN module "HLint: use newtype instead of data" #-}
+
+data Body a = Body
   { _atSharpLeft :: a
-  , _atWideLeft :: a 
+  , _atDiagonalLeft :: a 
   , _atAcross :: a
-  , _atWideRight :: a
+  , _atDiagonalRight :: a
   , _atSharpRight :: a
   }
   deriving stock (Eq, Ord, Show, Read, Generic)
 
-data LhsTemplate = LHS {_lhsHead :: Direction, _lhsBody :: Body RedBlack}
-  deriving stock (Eq, Ord, Show, Read, Generic)
-
-mkLHS :: Direction -> Body RedBlack -> LhsTemplate
-mkLHS = LHS
-
-data RhsTemplate = RHS {_rhsHead :: RelativeDirection, _rhsBody :: Body RedBlack}
-  deriving stock (Eq, Ord, Show, Read, Generic)
-
-mkRHS :: RelativeDirection -> Body RedBlack -> RhsTemplate
-mkRHS = RHS
-
 makeLenses ''Body
-makeLenses ''LhsTemplate
-makeLenses ''RhsTemplate
+
+rotateBy :: Direction -> Maybe RelativeDirection -> Direction 
+rotateBy = flip rotateBy'
+  where
+    rotateBy' Nothing = id
+    rotateBy' (Just a) = rotateBy'' a
+    rotateBy'' SharpLeft = rotateClockwise
+    rotateBy'' DiagonalLeft = rotateClockwise . rotateClockwise
+    rotateBy'' Across = rotateClockwise . rotateBy'' DiagonalLeft
+    rotateBy'' DiagonalRight = rotateClockwise  . rotateBy'' Across
+    rotateBy'' SharpRight = rotateClockwise  . rotateBy'' DiagonalRight
+
+dirDiff :: Direction -> Direction -> Maybe RelativeDirection
+a `dirDiff` b = lookup (a, b) dirDiffMap
+
+dirDiffMap :: Map.Map (Direction, Direction) RelativeDirection
+dirDiffMap = Map.fromList dirDiffList
+
+dirDiffList =
+  do
+    a <- allDirections
+    b <- allRelativeDirections
+    pure ((a, a `rotateBy` Just b), b)
 
 readBody :: RelativeDirection -> Lens' (Body a) a
 readBody SharpLeft = atSharpLeft
-readBody WideLeft = atWideLeft
+readBody DiagonalLeft = atDiagonalLeft
 readBody Across = atAcross
-readBody WideRight = atWideRight
+readBody DiagonalRight = atDiagonalRight
 readBody SharpRight = atSharpRight
 
-type MoveRuleBase = (Body, Maybe RelativeDirection)
-moveForward :: MoveRuleBase
-moveForward = (allRed, Just Across)
-turnLeft :: [MoveRuleBase]
-turnLeft = 
-  [ (Body Black Red Red Red Red, Just WideLeft)
-  , (Body Red Black Red Red Red, Just SharpLeft)
-  , (Body Red Red Black Red Black, Just WideLeft)
+toBody :: Iso' (RelativeDirection -> a) (Body a)
+toBody = iso h g
+  where
+  h f = 
+    Body 
+      (f SharpLeft)
+      (f DiagonalLeft)
+      (f Across)
+      (f DiagonalRight)
+      (f SharpRight)
+  g body dir = body ^. readBody dir
+
+onRight :: (AnIso' a b) -> Iso' (c, a) (c, b)
+onRight i = iso h g
+  where
+    h (c, a) = (c, a ^. cloneIso i)
+    g (c, b) = (c, b ^. from (cloneIso i))
+
+cellToBody :: forall a. Direction -> Iso' (Cell a) (a, Body a)
+cellToBody dir = from toCell . iso h g . onRight toBody
+  where
+    h :: (Direction -> a) -> (a, RelativeDirection -> a)
+    h f = (f dir, \rdir -> f (dir `rotateBy` Just rdir))
+    g :: (a, RelativeDirection -> a) -> Direction -> a
+    g (a, f) dir' = maybe a f (dir `dirDiff` dir')
+        
+toggleOpenedGate = Body Red Black Red Black Red  
+toggleClosedGate = Body Red Black Black Red Red
+
+queryGateOpenRight = Body Black Red Black Red Red
+queryGateOpenLeft = Body Red Red Black Red Black
+
+queryGateClosedRight = Body Black Black Red Red Red
+queryGateClosedLeft = Body Red Red Black Black Red
+
+wall1 = Body Black Black Black Red Red
+wall2 = Body Red Red Black Black Black 
+wall3 = Body Red Black Black Black Red
+
+toggleRules = [(a,b),(b,a)]
+  where
+    (a,b) = (toggleOpenedGate, toggleClosedGate)
+
+queryRules = 
+    [ (queryGateOpenRight, Just DiagonalRight)
+    , (queryGateOpenLeft, Just DiagonalLeft)
+    , (queryGateClosedRight, Nothing)
+    , (queryGateClosedLeft, Nothing)
+    ]
+
+wallRules =
+  [ (wall1, DiagonalRight)
+  , (wall2, DiagonalLeft)
+  , (wall3, SharpLeft)
   ]
-turnRight :: [MoveRuleBase]
-turnRight = 
-  [ (Body Red Red Red Black Red, Just WideRight)
-  , (Body Red Red Black Red Red, Just SharpRight)
-  , (Body Black Red Black Red Red, Just WideRight)
-  ]
-mirror :: [MoveRuleBase]
-mirror =
-  [ (Body Black Black Red Red Red, Nothing)
-  , (Body Red Red Black Black Red, Nothing)
-  ]
 
-toggleRules = 
-  [ (Body Red Black Red Black Red, RHS Nothing (Body Red Black Black Black Red)) -- turn to mirror
-  , (Body Red Black Black Red Red, RHS Nothing (Body Red Black Red Black Red)) -- mirror to turn
-  ]
-
-moveRules :: [(Body RedBlack, RhsTemplate)]
-moveRules =
-  moveForward : turnLeft <> turnRight <> mirror
-
-rotateLar :: RelativeDirection -> Direction -> Direction
-rotateLar SharpLeft = rotateClockwise
-rotateLar WideLeft = rotateClockwise . rotateClockwise
-rotateLar Across = inv
-rotateLar WideRight = rotateClockwise . inv
-rotateLar SharpRight = rotateClockwise . rotateClockwise . inv
-
--- Find the RelativeDirection that gets you from src to target by rotateLar ('Nothing' means tgt = src)
-vnDiff :: Direction -> Direction -> Maybe RelativeDirection
-vnDiff src tgt = M.lookup (src, tgt) vDiffMap
-
-vDiffMap :: Map (Direction, Direction) RelativeDirection
-vDiffMap = M.fromList $
-  do
-    src <- allDirections
-    rDir <- allRelativeDirections
-    pure ((src, rDir `rotateLar` src), rDir)
-
-class HeadBody a h b | a -> b, a -> h where
-  toBody :: Lens' a (Body b)
-  toHead :: Lens' a h
-
-instance HeadBody LhsTemplate Direction RedBlack where
-  toBody = cloneLens lhsBody
-  toHead = cloneLens lhsHead
-
-instance HeadBody RhsTemplate RelativeDirection RedBlack where
-  toBody = cloneLens rhsBody
-  toHead = cloneLens rhsHead
+moveRule = (allRed, Across)

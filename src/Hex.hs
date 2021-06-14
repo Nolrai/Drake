@@ -20,7 +20,7 @@ module Hex
     greaterToSubcell,
     greaterCellFromTorus,
     isLhzHead,
-    lhzMap,
+    ruleMap,
     RedBlack (..),
     allDirections,
     wideStep,
@@ -37,6 +37,7 @@ where
 import Control.Arrow ((***))
 import Control.Lens hiding (inside, outside, index)
 import Data.Map as Map (fromList, keysSet, lookup)
+import qualified Data.Map.ToMonoid as MMap (keysSet, lookup)
 import Data.Set as Set
 import Data.Vector as Vector
 import Drake (Torus, rangeT, read2d, rangeMod)
@@ -50,22 +51,9 @@ import Hex.GreaterCell
     outside,
   )
 import Hex.Rules
-  ( LhsTemplate,
-    RedBlack (..),
-    RhsTemplate,
-    lhzBase,
-    mkLHS,
-    readBody,
-    rotateLar,
-    toBody,
-    toHead,
-    toggle,
-    vnDiff,
-  )
 import Hex.Direction (Direction (..), allDirections, inv, offset)
-import Common
 
--- given a x,y pair and a Direction direction access the sub cell of the cell at that index.
+-- given a x,y pair and a Direction access the sub cell of the cell at that index.
 subCellOfTorus :: (Int, Int) -> Direction -> Lens' (Torus (Cell a)) a
 subCellOfTorus pos vn = read2d pos . subcell vn
 
@@ -96,64 +84,59 @@ pairLens lens1 lens2 = lens get' put'
 
 -- Turn a cell of lenses into a lense to a cell.
 -- this is named after sequenceM's behavior on lists
-sequenceL :: forall t a. Cell (ALens' t a) -> ALens' t (Cell a)
-sequenceL (Cell (n, e, s, w)) = lens get_ put_
+sequenceL :: forall t a. Cell (ALens' t a) -> Lens' t (Cell a)
+sequenceL (Cell (yz, xz, xy, zy, zx, yx)) = split' . cellify
   where
-    get_ :: t -> Cell a
-    get_ t = Cell (t ^. cloneLens n, t ^. cloneLens e, t ^. cloneLens s, t ^. cloneLens w)
-    put_ :: t -> Cell a -> t
-    put_ t (Cell (n', e', s', w')) =
-      set
-        (cloneLens n)
-        n'
-        ( set
-            (cloneLens e)
-            e'
-            ( set
-                (cloneLens s)
-                s'
-                ( set
-                    (cloneLens w)
-                    w'
-                    t
-                )
-            )
-        )
+    split :: Lens' t (a,(a,(a,(a,(a,a)))))
+    split = 
+      pairLenses yz . pairLenses xz . pairLenses xy . pairLenses zy . pairLenses zx . pairLenses yx
+    cellify :: Iso' (a,(a,(a,(a,(a,a))))) (Cell a)
+    cellify = iso f g
+    f (yx',(xz',(xy',(zy',(zx',yx'))))) = cell ell yx' xz' xy' zy' zx' yx'
+    g (Cell (yz', xz', xy', zy', zx', yx')) = (yx',(xz',(xy',(zy',(zx',yx')))))
 
-lhsToTemplate :: LhsTemplate -> GreaterCell RedBlack
-lhsToTemplate lhs =
-  (inside' ^. toCell, outside' ^. toCell) ^. greaterCell
-  where
-    inside', outside' :: Direction -> RedBlack
-    -- the inside is filled where the template is Black
-    inside' vn = maybe Red (\rDir -> lhs ^. toBody . readBody rDir) ((lhs ^. toHead) `vnDiff` vn)
-    outside' vn = if lhs ^. toHead == vn then Black else inside' vn -- the outside is also filled in at the head
-
-rhsToTemplate :: Direction -> RhsTemplate -> GreaterCell RedBlack
-rhsToTemplate old_head rhs =
-  (inside' ^. toCell, outside' ^. toCell) ^. greaterCell
-  where
-    new_head :: Direction
-    new_head = (rhs ^. toHead) `rotateLar` old_head
-    -- the outside is filled only where the template is Black
-    outside', inside' :: Direction -> RedBlack
-    outside' vn = maybe Red (\rDir -> rhs ^. toBody . readBody rDir) (new_head `vnDiff` vn)
-    -- the inside also filled in at the head the head
-    inside' vn = if new_head == vn then Black else outside' vn
-
-lhzMap :: Map (GreaterCell RedBlack) (GreaterCell RedBlack, Direction)
-lhzMap = Map.fromList lhzList
-
--- for testing
-lhzList :: [(GreaterCell RedBlack, (GreaterCell RedBlack, Direction))]
-lhzList = do
-  vn <- allDirections
-  (l, r) <- lhzBase
-  pure (lhsToTemplate (mkLHS vn l), (rhsToTemplate vn r, (r ^. toHead) `rotateLar` vn))
-
-data TorusEx = TorusEx {_torus :: Torus (Cell RedBlack), _headSet :: Set (Int, Int)}
+data TorusEx = TorusEx {_torus :: Torus (Cell RedBlack), _headMap :: Map (Int, Int) Direction}
 
 makeLenses ''TorusEx
+
+asLHS, asRHS :: Prism' (GreaterCell RedBlack) (Cell (Maybe RedBlack)) -- "Nothing" means a head
+asLHS = prism' _put _test
+  where
+    _put c =
+      let f def = (\ dir -> fromMaybe def (c ^. subcell dir) ) 
+      in (f Red, f Black) ^. from greaterCell
+    _test gc = executingStateT (cell Nothing Nothing Nothing Nothing Nothing Nothing) $
+        allDirections `forM_` 
+          \ dir -> 
+            do
+            let f io = gc ^. greaterToSubcell io dir
+            let (i,o) = (f Inside, f Outside)
+            r <- 
+              if i == o 
+                then pure (Just i)
+                else if o == Black 
+                  then pure Nothing
+                  else lift Nothing
+            subcell .= r
+
+asRHS = eversion . asLHS
+
+rhsBody c dir = 
+  let (h, b) = c ^. cellToBody dir
+  in if isNothing h
+    then Just (fromMaybe Red <$> b)
+    else Nothing
+
+eversion :: Iso (GreaterCell a) (GreaterCell a)
+eversion = from greaterCell . swap . greaterCell
+  where
+    swap (i,o) = (o,i)
+
+
+
+
+
+
 
 wideStep :: TorusEx -> Int -> TorusEx
 wideStep oldState index = if Set.null headSet' then error $ fromString "headSet is null" else applyRule oldState pos
@@ -181,7 +164,7 @@ applyRuleResult ::
 applyRuleResult pos = applyRuleToTorus pos *** applyRuleToHeadSet pos
 
 lookupGreaterCell :: (Int, Int) -> Getter TorusEx (Maybe (GreaterCell RedBlack, Direction))
-lookupGreaterCell pos = torus . greaterCellFromTorus pos . to (`Map.lookup` lhzMap)
+lookupGreaterCell pos = torus . greaterCellFromTorus pos . to (`Map.lookup` ruleMap)
 
 isLhzHead :: (Int, Int) -> Getter TorusEx Bool
 isLhzHead pos = lookupGreaterCell pos . to isJust
@@ -200,4 +183,4 @@ mkTorusEx t =
         Set.fromAscList . Vector.toList . Vector.filter isActiveCell $ rangeT t
     }
   where
-    isActiveCell pos = (t ^. greaterCellFromTorus pos) `Set.member` Map.keysSet lhzMap
+    isActiveCell pos = (t ^. greaterCellFromTorus pos) `Set.member` Map.keysSet ruleMap

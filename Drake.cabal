@@ -60,6 +60,7 @@ library
                      , relude
                      , vector
                      , random
+                     , monoidsinmaps
   exposed-modules:     Drake
                      , Draw
                      , Square
