@@ -13,8 +13,8 @@ import Data.Set
 import Drake
 import Graphics.Gloss
 import Relude
-import Hex
-import Square
+import qualified Hex
+import qualified Square
 
 class Draw a b | a -> b where
   draw :: b -> a -> Picture
@@ -22,7 +22,7 @@ class Draw a b | a -> b where
 aroundZero :: Int -> [Int]
 aroundZero n = [- (n `div` 2) .. (n `div` 2) + (if even n then -1 else 0)]
 
-instance Draw (Torus (Cell RedBlack)) (Set (GreaterCell RedBlack), (Int, Int), Float) where
+instance Subcells cell dir => Draw (Torus (cell RedBlack)) (greatercell RedBlack -> Bool, (Int, Int), Float) where
   draw (rules, (width, hight), tileSize) tz =
     pictures $ do
       idx <- aroundZero width
@@ -34,20 +34,23 @@ instance Draw (Torus (Cell RedBlack)) (Set (GreaterCell RedBlack), (Int, Int), F
           ( draw
               tileSize
               ( tz ^. read2d (idx, idy),
-                (tz ^. greaterCellFromTorus (idx, idy)) `member` rules
+                tz ^. greaterCellFromTorus (idx, idy) . to highlight
               )
           )
 
-instance Draw (Cell RedBlack) Float where
+instance Subcells cell dir => Draw (cell RedBlack) Float where
   draw tileSize c = draw tileSize (c, False)
 
-instance Draw (Cell RedBlack, Bool) Float where
+instance Subcells cell dir => Draw (cell RedBlack, Bool) Float where
   draw tileSize (c, b) = 
-    pictures $ coloredTriangle tileSize toColor' <$> allDirections
+    pictures $ coloredTriangle tileSize toColor' <$> Square.allDirections
     where
-      toColor' vn = toColor b (c ^. subcell vn)
+      toColor' vn = toColor b (c ^. Square.subcell vn)
 
-coloredTriangle :: Float -> (Direction -> Color) -> Direction -> Picture
+class Subcells cell dir | cell -> dir, dir -> cell where
+
+  
+coloredTriangle :: Subcells dir => Float -> (dir -> Color) -> dir -> Picture
 coloredTriangle tileSize cellColor vn = color (cellColor vn) $ rotatedTriangle tileSize vn
 
 toColor :: Bool -> RedBlack -> Color
@@ -56,16 +59,17 @@ toColor True Black = blue
 toColor False Red = dim (dark red)
 toColor False Black = black
 
-rotatedTriangle :: Float -> Direction -> Picture
-rotatedTriangle tileSize vn = 
-  rotate angle (triangleNorth tileSize)
-  where
-    angle = 
-      case vn of
-        N -> 0
-        E -> 90
-        S -> 180
-        W -> 270
+instance Subcells Square.Direction where
+  rotatedTriangle :: Float -> Direction -> Picture
+  rotatedTriangle tileSize vn = 
+    rotate angle (triangleNorth tileSize)
+    where
+      angle = 
+        case vn of
+          N -> 0
+          E -> 90
+          S -> 180
+          W -> 270
 
 triangleNorth :: Float -> Picture
 triangleNorth tileSize = 
@@ -86,3 +90,6 @@ northBase tileSize =
   [ (- tileSize / 2, tileSize / 2)
   , (tileSize / 2, tileSize / 2)
   ]
+
+instance Subcells Hex.Direction where
+

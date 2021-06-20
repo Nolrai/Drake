@@ -38,21 +38,13 @@ import Relude
     (.),
   )
 import Square.Direction (Direction (..), inv, rotateClockwise)
+import DrawableCell
 
 data RelativeDirection
   = L -- Left
   | A -- Across
   | R -- Right
   deriving stock (Eq, Ord, Show, Read, Generic)
-
-data RedBlack
-  = Red -- Empty
-  | Black -- Full
-  deriving stock (Eq, Ord, Show, Read, Generic)
-
-toggle :: RedBlack -> RedBlack
-toggle Red = Black
-toggle Black = Red
 
 data Body a = Body {_atL :: a, _atA :: a, _atR :: a}
   deriving stock (Eq, Ord, Show, Read, Generic)

@@ -6,46 +6,31 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedLists #-}
 
 module Hex.Rules
-  ( moveRules,
+  ( moveRule,
+    wallRules,
     toggleRules,
+    queryRules,
     rotateBy,
-    vnDiff,
+    dirDiff,
     readBody,
-    toBody,
-    toHead,
     RelativeDirection (..),
-    LhsTemplate (),
-    mkLHS,
     RedBlack (..),
     toggle,
     Body (..),
+    cellToBody,
   )
 where
 
 import Control.Lens
 import Data.Map as Map (Map, fromList, lookup)
 import Relude
-  ( Applicative (pure),
-    Eq,
-    Generic,
-    Map,
-    Ord,
-    Read,
-    Show,
-    ($),
-    (.),
-    (<>),
-    id,
-    executingState,
-    flip,
-    (/=)
-  )
-import Data.Maybe
-import Hex.Direction (Direction (..), inv, rotateClockwise, allDirections)
+import Hex.Direction (Direction (..), rotateClockwise, allDirections)
 import Hex.Cell
-import Data.Array
+import Data.Vector as Vector
+import DrawableCell
 
 data RelativeDirection
   = SharpLeft
@@ -55,7 +40,7 @@ data RelativeDirection
   | SharpRight
   deriving stock (Eq, Ord, Show, Read, Generic)
 
-allRelativeDirections :: [RelativeDirection]
+allRelativeDirections :: Vector RelativeDirection
 allRelativeDirections = 
   [ SharpLeft
   , DiagonalLeft
@@ -63,15 +48,6 @@ allRelativeDirections =
   , DiagonalRight
   , SharpRight
   ]
-
-data RedBlack
-  = Red -- Empty
-  | Black -- Full
-  deriving stock (Eq, Ord, Show, Read, Generic)
-
-toggle :: RedBlack -> RedBlack
-toggle Red = Black
-toggle Black = Red
 
 {-# ANN module "HLint: use newtype instead of data" #-}
 
@@ -101,8 +77,9 @@ dirDiff :: Direction -> Direction -> Maybe RelativeDirection
 a `dirDiff` b = lookup (a, b) dirDiffMap
 
 dirDiffMap :: Map.Map (Direction, Direction) RelativeDirection
-dirDiffMap = Map.fromList dirDiffList
+dirDiffMap = Map.fromList $ Vector.toList dirDiffList
 
+dirDiffList :: Vector ((Direction, Direction), RelativeDirection)
 dirDiffList =
   do
     a <- allDirections
@@ -141,24 +118,30 @@ cellToBody dir = from toCell . iso h g . onRight toBody
     h f = (f dir, \rdir -> f (dir `rotateBy` Just rdir))
     g :: (a, RelativeDirection -> a) -> Direction -> a
     g (a, f) dir' = maybe a f (dir `dirDiff` dir')
-        
+
+toggleOpenedGate, toggleClosedGate :: Body RedBlack
 toggleOpenedGate = Body Red Black Red Black Red  
 toggleClosedGate = Body Red Black Black Red Red
 
+queryGateOpenRight, queryGateOpenLeft, queryGateClosedRight, queryGateClosedLeft :: Body RedBlack 
 queryGateOpenRight = Body Black Red Black Red Red
 queryGateOpenLeft = Body Red Red Black Red Black
 
 queryGateClosedRight = Body Black Black Red Red Red
 queryGateClosedLeft = Body Red Red Black Black Red
 
+wall1, wall2, wall3 :: Body RedBlack 
 wall1 = Body Black Black Black Red Red
 wall2 = Body Red Red Black Black Black 
 wall3 = Body Red Black Black Black Red
 
+-- TODO: These are wrong! Need to use a differnt rule set!
+toggleRules :: Vector (Body RedBlack, Body RedBlack)
 toggleRules = [(a,b),(b,a)]
   where
     (a,b) = (toggleOpenedGate, toggleClosedGate)
 
+queryRules, wallRules :: Vector (Body RedBlack, Maybe RelativeDirection)
 queryRules = 
     [ (queryGateOpenRight, Just DiagonalRight)
     , (queryGateOpenLeft, Just DiagonalLeft)
@@ -167,9 +150,10 @@ queryRules =
     ]
 
 wallRules =
-  [ (wall1, DiagonalRight)
-  , (wall2, DiagonalLeft)
-  , (wall3, SharpLeft)
+  [ (wall1, Just DiagonalRight)
+  , (wall2, Just DiagonalLeft)
+  , (wall3, Just SharpLeft)
   ]
 
-moveRule = (allRed, Across)
+moveRule :: (Cell RedBlack, RelativeDirection)
+moveRule = ((const Red) ^. toCell, Across)

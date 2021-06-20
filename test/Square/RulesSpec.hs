@@ -16,7 +16,7 @@ import Data.List (isSubsequenceOf)
 import Data.Set as Set
 import Square.Cell (Cell ())
 import Square.CellSpec ()
-import Square.GreaterCell
+import Square.Greater cell
 import Square.Rules (Body (..), RelativeDirection (..), LhsTemplate (), RedBlack (..), RhsTemplate (), lhzBase, mkLHS, mkRHS, readBody, rotateLar, toBody, toHead, toggle, vnDiff)
 import Square.Direction (Direction)
 import Square.DirectionSpec ()

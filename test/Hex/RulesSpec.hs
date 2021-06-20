@@ -16,7 +16,7 @@ import Data.List (isSubsequenceOf)
 import Data.Set as Set
 import Hex.Cell (Cell ())
 import Hex.CellSpec ()
-import Hex.GreaterCell
+import Hex.Greater cell
 import Hex.Rules (Body (..), RelativeDirection (..), LhsTemplate (), RedBlack (..), RhsTemplate (), lhzBase, mkLHS, mkRHS, readBody, rotateLar, toBody, toHead, toggle, vnDiff)
 import Hex.Direction (Direction)
 import Hex.DirectionSpec ()

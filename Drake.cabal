@@ -60,17 +60,14 @@ library
                      , relude
                      , vector
                      , random
-                     , monoidsinmaps
   exposed-modules:     Drake
                      , Draw
                      , Square
                      , Square.Cell
-                     , Square.GreaterCell
                      , Square.Rules
                      , Square.Direction
                      , Hex
                      , Hex.Cell
-                     , Hex.GreaterCell
                      , Hex.Rules
                      , Hex.Direction
 

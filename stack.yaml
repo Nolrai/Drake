@@ -2,5 +2,3 @@ resolver: lts-17.11
 
 extra-deps:
 - random-1.2.0
-- github: Nolrai/monoidsinmaps
-  commit: 28fc94a5e7aa0a930361caa3cfb960f369b0881e

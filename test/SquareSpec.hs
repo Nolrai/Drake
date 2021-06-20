@@ -12,7 +12,7 @@ import DrakeSpec ()
 import Square (greaterCellFromTorus, inside, subCellOfTorus, toggleSubCellOnTorus)
 import Square.Cell (Cell)
 import Square.CellSpec ()
-import Square.GreaterCell (GreaterCell)
+import Square.Greater cell (Greater cell)
 import Square.GreaterCellSpec ()
 import Square.Rules (RedBlack)
 import Square.RulesSpec ()
@@ -31,9 +31,9 @@ spec = do
     it "is an lens" . property $
       \pos vn -> isLens (subCellOfTorus pos vn :: Lens' (Torus (Cell RedBlack)) RedBlack)
   describe "greaterCellFromTorus" $ do
-    it "is an setter" . property $ \pos -> isSetter (greaterCellFromTorus pos :: Lens' (Torus (Cell RedBlack)) (GreaterCell RedBlack))
-    it "is an traversal" . property $ \pos -> isTraversal (greaterCellFromTorus pos :: Lens' (Torus (Cell RedBlack)) (GreaterCell RedBlack))
-    it "is an lens" . property $ \pos -> isLens (greaterCellFromTorus pos :: Lens' (Torus (Cell RedBlack)) (GreaterCell RedBlack))
+    it "is an setter" . property $ \pos -> isSetter (greaterCellFromTorus pos :: Lens' (Torus (Cell RedBlack)) (Greater cell RedBlack))
+    it "is an traversal" . property $ \pos -> isTraversal (greaterCellFromTorus pos :: Lens' (Torus (Cell RedBlack)) (Greater cell RedBlack))
+    it "is an lens" . property $ \pos -> isLens (greaterCellFromTorus pos :: Lens' (Torus (Cell RedBlack)) (Greater cell RedBlack))
     it "is superset of read2d" . property $
       \pos t -> t ^. greaterCellFromTorus pos . inside == t ^. read2d pos
   describe "toggleSubCellOnTorus" $ do

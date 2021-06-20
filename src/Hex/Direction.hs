@@ -3,10 +3,13 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Hex.Direction (Direction (..), allDirections, inv, offset, rotateClockwise) where
 
-import Relude (Enum, Eq, Generic, Int, Num ((+), (-)), Ord, Read, Show)
+import Relude (Enum, Eq, Generic, Int, Num ((+), (-)), Ord, Read, Show, IsList)
+import GHC.Exts (Item)
 
 -- the vonNeumann neihboorhood
 data Direction 
@@ -18,7 +21,7 @@ data Direction
   | YX
   deriving stock (Show, Read, Eq, Ord, Enum, Generic)
 
-allDirections :: [Direction]
+allDirections :: (IsList a, Item a ~ Direction) => a
 allDirections = 
   [YZ
   , XZ

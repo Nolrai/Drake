@@ -12,7 +12,7 @@ import Control.Lens (Iso', Lens', from, (^.))
 import Control.Lens.Properties (isIso, isLens, isSetter, isTraversal)
 import Hex.Cell (Cell (Cell), cell, subcell, toCell)
 import Hex.CellSpec ()
-import Hex.GreaterCell
+import Hex.Greater cell
 import Hex.Direction (Direction)
 import Hex.DirectionSpec ()
 import Test.Hspec (Spec, describe, it, shouldBe)
@@ -20,10 +20,10 @@ import Test.QuickCheck (Arbitrary (..), CoArbitrary, Function, property)
 import Test.QuickCheck.Gen as QG
 import Prelude
 
-greaterCell' :: Iso' (Cell Bool, Cell Bool) (GreaterCell Bool)
+greaterCell' :: Iso' (Cell Bool, Cell Bool) (Greater cell Bool)
 greaterCell' = greaterCell
 
-greaterToSubcell' :: InsideOutside -> Direction -> Lens' (GreaterCell Bool) Bool
+greaterToSubcell' :: InsideOutside -> Direction -> Lens' (Greater cell Bool) Bool
 greaterToSubcell' = greaterToSubcell
 
 spec = do
@@ -33,7 +33,7 @@ spec = do
     it "is an traversal" . property $ \insideOutside vn -> isTraversal $ greaterToSubcell' insideOutside vn
     it "is an lens" . property $ \insideOutside vn -> isLens $ greaterToSubcell' insideOutside vn
 
-instance Arbitrary a => Arbitrary (GreaterCell a) where
+instance Arbitrary a => Arbitrary (Greater cell a) where
   arbitrary = do
     i <- arbitrary
     o <- arbitrary
@@ -50,6 +50,6 @@ instance Arbitrary InsideOutside where
   shrink Inside = []
   shrink Outside = [Inside]
 
-instance CoArbitrary a => CoArbitrary (GreaterCell a)
+instance CoArbitrary a => CoArbitrary (Greater cell a)
 
-instance Function a => Function (GreaterCell a)
+instance Function a => Function (Greater cell a)

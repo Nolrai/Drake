@@ -13,7 +13,7 @@ module Square
     toCell,
     subCellOfTorus,
     toggleSubCellOnTorus,
-    GreaterCell,
+    Greater,
     inside,
     outside,
     greaterCell,
@@ -42,13 +42,7 @@ import Data.Vector as Vector
 import Drake (Torus, rangeT, read2d, rangeMod)
 import Relude
 import Square.Cell (Cell (Cell), cell, subcell, toCell)
-import Square.GreaterCell
-  ( GreaterCell (),
-    greaterCell,
-    greaterToSubcell,
-    inside,
-    outside,
-  )
+import DrawableCell
 import Square.Rules
   ( LhsTemplate,
     RedBlack (..),
@@ -73,7 +67,7 @@ toggleSubCellOnTorus :: (Int, Int) -> Direction -> Torus (Cell RedBlack) -> Toru
 toggleSubCellOnTorus pos vn = over (subCellOfTorus pos vn) toggle
 
 -- A greaterCell is a cell and its sourounding sub-cells
-greaterCellFromTorus :: (Int, Int) -> Lens' (Torus (Cell RedBlack)) (GreaterCell RedBlack)
+greaterCellFromTorus :: (Int, Int) -> Lens' (Torus (Cell RedBlack)) (Greater cell RedBlack)
 greaterCellFromTorus pos = pairLens readInside readOutside . greaterCell
   where
     readInside :: ALens' (Torus (Cell RedBlack)) (Cell RedBlack)
@@ -119,7 +113,7 @@ sequenceL (Cell (n, e, s, w)) = lens get_ put_
             )
         )
 
-lhsToTemplate :: LhsTemplate -> GreaterCell RedBlack
+lhsToTemplate :: LhsTemplate -> Greater cell RedBlack
 lhsToTemplate lhs =
   (inside' ^. toCell, outside' ^. toCell) ^. greaterCell
   where
@@ -128,7 +122,7 @@ lhsToTemplate lhs =
     inside' vn = maybe Red (\rDir -> lhs ^. toBody . readBody rDir) ((lhs ^. toHead) `vnDiff` vn)
     outside' vn = if lhs ^. toHead == vn then Black else inside' vn -- the outside is also filled in at the head
 
-rhsToTemplate :: Direction -> RhsTemplate -> GreaterCell RedBlack
+rhsToTemplate :: Direction -> RhsTemplate -> Greater cell RedBlack
 rhsToTemplate old_head rhs =
   (inside' ^. toCell, outside' ^. toCell) ^. greaterCell
   where
@@ -140,11 +134,11 @@ rhsToTemplate old_head rhs =
     -- the inside also filled in at the head the head
     inside' vn = if new_head == vn then Black else outside' vn
 
-lhzMap :: Map (GreaterCell RedBlack) (GreaterCell RedBlack, Direction)
+lhzMap :: Map (Greater cell RedBlack) (Greater cell RedBlack, Direction)
 lhzMap = Map.fromList lhzList
 
 -- for testing
-lhzList :: [(GreaterCell RedBlack, (GreaterCell RedBlack, Direction))]
+lhzList :: [(Greater cell RedBlack, (Greater cell RedBlack, Direction))]
 lhzList = do
   vn <- allDirections
   (l, r) <- lhzBase
@@ -171,21 +165,21 @@ applyRule old pos =
       maybe
         (id, Set.delete pos)
         (applyRuleResult pos)
-        (old ^. lookupGreaterCell pos :: Maybe (GreaterCell RedBlack, Direction))
+        (old ^. lookupGreaterCell pos :: Maybe (Greater cell RedBlack, Direction))
 
 applyRuleResult ::
   (Int, Int) ->
-  (GreaterCell RedBlack, Direction) ->
+  (Greater cell RedBlack, Direction) ->
   (Torus (Cell RedBlack) -> Torus (Cell RedBlack), Set (Int, Int) -> Set (Int, Int))
 applyRuleResult pos = applyRuleToTorus pos *** applyRuleToHeadSet pos
 
-lookupGreaterCell :: (Int, Int) -> Getter TorusEx (Maybe (GreaterCell RedBlack, Direction))
+lookupGreaterCell :: (Int, Int) -> Getter TorusEx (Maybe (Greater cell RedBlack, Direction))
 lookupGreaterCell pos = torus . greaterCellFromTorus pos . to (`Map.lookup` lhzMap)
 
 isLhzHead :: (Int, Int) -> Getter TorusEx Bool
 isLhzHead pos = lookupGreaterCell pos . to isJust
 
-applyRuleToTorus :: (Int, Int) -> GreaterCell RedBlack -> Torus (Cell RedBlack) -> Torus (Cell RedBlack)
+applyRuleToTorus :: (Int, Int) -> Greater cell RedBlack -> Torus (Cell RedBlack) -> Torus (Cell RedBlack)
 applyRuleToTorus pos newGC = greaterCellFromTorus pos .~ newGC
 
 applyRuleToHeadSet :: (Int, Int) -> Direction -> Set (Int, Int) -> Set (Int, Int)

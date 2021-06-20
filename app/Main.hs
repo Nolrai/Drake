@@ -45,10 +45,10 @@ import System.Random.Stateful
 blankCell :: Cell RedBlack
 blankCell = const Red ^. toCell
 
-redGreaterCell :: GreaterCell RedBlack
+redGreaterCell :: Greater cell RedBlack
 redGreaterCell = (blankCell, blankCell) ^. greaterCell
 
-testGC :: GreaterCell RedBlack
+testGC :: Greater cell RedBlack
 testGC = (\b -> if b then Black else Red) <$> ((== N) ^. toCell, (`L.elem` [N, E]) ^. toCell) ^. greaterCell
 
 data World = World {_board :: TorusEx, _gen :: AtomicGenM StdGen, _updateRate :: Int}
