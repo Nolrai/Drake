@@ -62,6 +62,8 @@ library
                      , random
   exposed-modules:     Drake
                      , Draw
+                     , RedBlack
+                     , Greater
                      , Square
                      , Square.Cell
                      , Square.Rules

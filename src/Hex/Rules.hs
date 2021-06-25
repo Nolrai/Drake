@@ -30,7 +30,7 @@ import Relude
 import Hex.Direction (Direction (..), rotateClockwise, allDirections)
 import Hex.Cell
 import Data.Vector as Vector
-import DrawableCell
+import RedBlack
 
 data RelativeDirection
   = SharpLeft

@@ -44,9 +44,9 @@ import Data.Vector as Vector
 import Drake (Torus, rangeT, read2d, rangeMod)
 import Relude
 import Hex.Cell (Cell (Cell), cell, subcell, toCell)
-import DrawableCell
 import Hex.Rules
 import Hex.Direction (Direction (..), allDirections, inv, offset)
+import Greater
 
 -- given a x,y pair and a Direction access the sub cell of the cell at that index.
 subCellOfTorus :: (Int, Int) -> Direction -> Lens' (Torus (Cell a)) a
@@ -216,4 +216,4 @@ mkTorusEx t =
     { _torus = t,
       _headSet =
         Set.fromAscList . Vector.toList . Vector.filter (\ p -> t ^. isLhzHead p) $ rangeT t
-    }
+    } 
