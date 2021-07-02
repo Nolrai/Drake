@@ -1,6 +1,12 @@
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
+module Greater (Greater(..), greaterCell, InsideOutside(..), inside, outside, insideOutside) where
 
-module Greater where
+import Control.Lens ( iso, lens, Iso', Lens', ALens')
+import Relude (Ord, Eq, Functor, Generic, Show, Read)
 
 {-# ANN module "HLint: ignore Use newtype instead of data" #-}
 
@@ -19,6 +25,6 @@ inside = lens (\(Greater (i, _)) -> i) (\(Greater (_, o)) i -> Greater (i, o))
 outside :: Lens' (Greater cell a) (cell a)
 outside = lens (\(Greater (_, o)) -> o) (\(Greater (i, _)) o -> Greater (i, o))
 
-greaterToSubcell :: DrawableCell cell dir rdir => InsideOutside -> dir -> Lens' (Greater cell a) a
-greaterToSubcell Inside vn = inside . subcell vn
-greaterToSubcell Outside vn = outside . subcell vn
+insideOutside :: InsideOutside -> ALens' (Greater cell a) (cell a)
+insideOutside Inside = inside
+insideOutside Outside = outside

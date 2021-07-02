@@ -3,16 +3,19 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE GADTs #-}
 
 module Square.Direction (Direction (..), allDirections, inv, offset, rotateClockwise) where
 
-import Relude (Enum, Eq, Generic, Int, Num ((+), (-)), Ord, Read, Show)
+import Relude (Enum, Eq, Generic, Num ((+), (-)), Ord, Read, Show)
+import GHC.Exts
 
 -- the vonNeumann neihboorhood
 data Direction = N | E | S | W
   deriving stock (Show, Read, Eq, Ord, Enum, Generic)
 
-allDirections :: [Direction]
+allDirections :: (IsList a, GHC.Exts.Item a ~ Direction) => a
 allDirections = [N, E, S, W]
 
 inv :: Direction -> Direction

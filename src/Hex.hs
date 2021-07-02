@@ -10,7 +10,7 @@ module Hex
   ( Direction (..),
     offset,
     Cell (),
-    cell,
+    Cell,
     subcell,
     toCell,
     subCellOfTorus,
@@ -31,6 +31,7 @@ module Hex
     headSet,
     mkTorusEx,
     pairLenses, -- should we really define this here??
+    RelativeDirection,
   )
 where
 
@@ -43,12 +44,13 @@ import Data.Set as Set
 import Data.Vector as Vector
 import Drake (Torus, rangeT, read2d, rangeMod)
 import Relude
-import Hex.Cell (Cell (Cell), cell, subcell, toCell)
+import Hex.Cell (Cell (Cell), Cell, subcell, toCell, cell)
 import Hex.Rules
 import Hex.Direction (Direction (..), allDirections, inv, offset)
 import Greater
+import Data.Bits
 
--- given a x,y pair and a Direction access the sub cell of the cell at that index.
+-- given a x,y pair and a Direction access the sub Cell of the Cell at that index.
 subCellOfTorus :: (Int, Int) -> Direction -> Lens' (Torus (Cell a)) a
 subCellOfTorus pos vn = read2d pos . subcell vn
 
@@ -56,9 +58,9 @@ subCellOfTorus pos vn = read2d pos . subcell vn
 toggleSubCellOnTorus :: (Int, Int) -> Direction -> Torus (Cell RedBlack) -> Torus (Cell RedBlack)
 toggleSubCellOnTorus pos vn = over (subCellOfTorus pos vn) toggle
 
--- A greaterCell is a cell and its sourounding sub-cells
-greaterCellFromTorus :: (Int, Int) -> Lens' (Torus (Cell RedBlack)) (Greater cell RedBlack)
-greaterCellFromTorus pos = pairLens readInside readOutside . greaterCell
+-- A greaterCell is a Cell and its sourounding sub-cells
+greaterCellFromTorus :: (Int, Int) -> Lens' (Torus (Cell RedBlack)) (Greater Cell RedBlack)
+greaterCellFromTorus pos = pairLenses readInside readOutside . greaterCell
   where
     readInside :: ALens' (Torus (Cell RedBlack)) (Cell RedBlack)
     readInside = read2d pos
@@ -77,93 +79,109 @@ pairLenses lens1 lens2 = lens get' put'
     get' t = (t ^# lens1, t ^# lens2)
     put' t (v1, v2) = storing lens2 v2 (storing lens1 v1 t)
 
--- Turn a cell of lenses into a lense to a cell.
+-- Turn a Cell of lenses into a lense to a Cell.
 -- this is named after sequenceM's behavior on lists
 sequenceL :: forall t a. Cell (ALens' t a) -> Lens' t (Cell a)
 sequenceL (Cell (yz, xz, xy, zy, zx, yx)) = split' . cellify
   where
     split' :: Lens' t (a,(a,(a,(a,(a,a)))))
     split' = 
-      pairLenses yz . pairLenses xz . pairLenses xy . pairLenses zy . pairLenses zx . pairLenses yx
+      pairLenses yz . pairLenses xz . pairLenses xy . pairLenses zy $ pairLenses zx yx
     cellify :: Iso' (a,(a,(a,(a,(a,a))))) (Cell a)
     cellify = iso f g
     f (yz',(xz',(xy',(zy',(zx',yx'))))) = cell yz' xz' xy' zy' zx' yx'
     g (Cell (yz', xz', xy', zy', zx', yx')) = (yz',(xz',(xy',(zy',(zx',yx')))))
 
+greaterToSubcell :: InsideOutside -> Direction -> Lens' (Greater Cell a) a
+greaterToSubcell io dir = cloneLens (insideOutside io) . subcell dir
+
 data TorusEx = TorusEx {_torus :: Torus (Cell RedBlack), _headSet :: Set (Int, Int)}
 
 makeLenses ''TorusEx
 
-asLHS, asRHS :: Prism' (Greater cell RedBlack) (Cell (Maybe RedBlack)) -- "Nothing" means a head
-asLHS = prism' _put _test
+asLHS, asRHS :: Prism' (Greater Cell RedBlack) (Cell (Maybe RedBlack)) -- "Nothing" means a head
+asLHS = 
+  prism' 
+    _put 
+    _test
   where
+    _put :: Cell (Maybe RedBlack) -> Greater Cell RedBlack
     _put c =
       let f def = (\ dir -> fromMaybe def (c ^. subcell dir) ) 
-      in (f Red, f Black) ^. from greaterCell
-    _test old= executingStateT (cell Nothing Nothing Nothing Nothing Nothing Nothing) $
+      in (f Red ^. toCell, f Black ^. toCell) ^. greaterCell
+    _test :: Greater Cell RedBlack -> Maybe (Cell (Maybe RedBlack))
+    _test old = executingStateT (cell Nothing Nothing Nothing Nothing Nothing Nothing) (stateAction old)
+    stateAction old =
         allDirections `Vector.forM_` 
           \ dir -> 
             do
               let f io = old ^. greaterToSubcell io dir
               let (i,o) = (f Inside, f Outside)
-              r <- 
-                if i == o 
+              (r :: Maybe RedBlack) <- 
+                if i == o
                   then pure (Just i)
                   else if o == Black 
                     then pure Nothing
                     else lift Nothing
-              subcell .= r
+              subcell dir .= r
 
 asRHS = eversion . asLHS
 
-rhsBody c dir = 
-  let (h, b) = c ^. cellToBody dir
-  in if isNothing h
-    then Just (fromMaybe Red <$> b)
-    else Nothing
-
-eversion :: Iso' (Greater cell a) (Greater cell a)
-eversion = from greaterCell . swap . greaterCell
+eversion :: Iso' (Greater Cell a) (Greater Cell a)
+eversion = from greaterCell . swap' . greaterCell
   where
-    swap (i,o) = (o,i)
+  swap' :: Iso' (a, b) (b, a)
+  swap' = iso swap swap
 
+-- the cell only uses 6 of the bits
 word8 :: Lens' Word8 (Cell RedBlack)
 word8 = lens _get _put
   where
     toRB b = if b then Black else Red
-    bitToRB x n = toRB $ x `testBit` n 
-    _get w = let [a,b,c,d,e,f] = bitToRB w <$> [0..5] in cell a b c d e f
+    bitToRB x n = toRB $ x `testBit` n
+    _get :: Word8 -> Cell RedBlack
+    _get w = bitToRB w <$> Cell (0, 1, 2, 3, 4, 5)
+    fromRB :: RedBlack -> Int -> Word8
     fromRB rb i = if rb == Black then bit i else 0
+    _put :: Word8 -> Cell RedBlack -> Word8
     _put w (Cell (a, b, c, d, e, f)) = 
-      Vector.foldr (.|.) 0 $ w .&. (bit 7 .|. bit 6) : Vector.zipWith fromRB [a,b,c,d,e,f] [0..5]
+      Vector.foldr (.|.) 0 $ vHead `Vector.cons` vTail
+      where
+      vHead :: Word8
+      vHead = w .&. (bit 7 .|. bit 6)  
+      vTail :: Vector Word8
+      vTail = Vector.zipWith fromRB [a,b,c,d,e,f] ([0..5] :: Vector Int)
 
-word16 :: Iso' Word16 (Greater cell RedBlack)
-word16 = from greaterCell . alongside word8 word8 . pack
+word16 :: Lens' Word16 (Greater Cell RedBlack)
+word16 = from pack . middle . greaterCell 
   where
+    middle :: Lens' (Word8, Word8) (Cell RedBlack, Cell RedBlack)
+    middle = alongside word8 word8
     pack :: Iso' (Word8, Word8) Word16
     pack = iso h g
     h :: (Word8, Word8) -> Word16
-    h (i, o) = shiftL 6 (fromIntegral i) .|. o
-    g w = (fromIntegral (shiftR 6 w), fromIntegral (w .&. Vector.foldr (.|.) (bit <$> [0..5]))) 
+    h (i, o) = shiftL 6 (fromIntegral i) .|. fromIntegral o
+    g :: Word16 -> (Word8, Word8)
+    g w = (fromIntegral (shiftR w 6), fromIntegral (w .&. Vector.foldr (.|.) 0 (bit <$> [0..5]))) 
 
 -- we only actually use the botom 12 bits
-ruleVector :: Vector (Greater cell RedBlack)
-ruleVector = generate (2^12) (codeToMapEntry . fromIntegral) 
+ruleVector :: Maybe (Vector (Greater Cell RedBlack))
+ruleVector = generateM (2^12) (codeToMapEntry . fromIntegral) 
 
-codeToMapEntry :: Word16 -> Maybe (Greater cell RedBlack)
+codeToMapEntry :: Word16 -> Maybe (Greater Cell RedBlack)
 codeToMapEntry lhsCode =
   do
     lhs <- old ^? asLHS
-    let heads = Set.filter (^. isHead) allDirections
-    guard (not $ Vector.null heads) -- throwout ones that have no heads
+    let heads = Set.filter (\dir -> lhs ^. isHead dir) allDirections 
+    guard (not $ Set.null heads) -- throwout ones that have no heads
     pure (rhs heads ^. from asRHS)
   where
-    old :: Greater cell RedBlack
-    old = lhsCode ^. from word16
+    old :: Greater Cell RedBlack
+    old = lhsCode ^. word16
     toBody' :: Direction -> Body (Maybe RedBlack)
-    toBody' dir = (old ^. inside) . toBody
-    lookupBody map headDir = let (_, body) = toBody' headDir in Map.lookup body map
-    newHeads = Set.map (\ headDir -> fromJust look moveMap)
+    toBody' = old ^. inside . toBody
+    lookupBody ruleMap headDir = let (_, body) = toBody' headDir in Map.lookup body ruleMap
+    newHeads = Set.map (\ headDir -> fromJust (lookUp headDir) moveMap)
     newBlack heads = fromMaybe (old ^. inside) . ala First Vector.sum $ lookupBody toggleMap <$> heads
     rhs heads = (\dir -> if dir `Set.member` newHeads heads then Nothing else Just (if dir `Set.member` newBlack then Black else Red)) ^. toCell
 
@@ -177,7 +195,7 @@ wideStep oldState index = if Set.null headSet' then error $ fromString "headSet 
     pos = (Vector.fromList . Set.toList) headSet' ! (index `rangeMod` Set.size headSet') 
 
 applyRule :: TorusEx -> (Int, Int) -> TorusEx
--- pos is the index of the cell the head is pointing into
+-- pos is the index of the Cell the head is pointing into
 applyRule old pos =
   (torus %~ modifyTorus_) . (headSet %~ modifyHeadSet_) $ old
   where
@@ -187,24 +205,24 @@ applyRule old pos =
       maybe
         (id, Set.delete pos)
         (applyRuleResult pos)
-        (old ^. torus . lookupGreaterCell pos :: Maybe (Greater cell RedBlack, Direction))
+        (old ^. torus . lookupGreaterCell pos :: Maybe (Greater Cell RedBlack, Direction))
 
 applyRuleResult ::
   (Int, Int) ->
-  (Greater cell RedBlack, Direction) ->
+  (Greater Cell RedBlack, Direction) ->
   (Torus (Cell RedBlack) -> Torus (Cell RedBlack), Set (Int, Int) -> Set (Int, Int))
 applyRuleResult pos = applyRuleToTorus pos *** applyRuleToHeadSet pos
 
-lookupGreaterCell :: Getter (Greater cell RedBlack) (Maybe (Greater cell RedBlack))
+lookupGreaterCell :: Getter (Greater Cell RedBlack) (Maybe (Greater Cell RedBlack))
 lookupGreaterCell = set word16 . to (ruleVector !)
 
-lookupPos :: (Int, Int) -> Getter (Torus (Cell RedBlack)) (Greater cell RedBlack)
+lookupPos :: (Int, Int) -> Getter (Torus (Cell RedBlack)) (Greater Cell RedBlack)
 lookupPos pos = greaterCellFromTorus pos . lookupGreaterCell
 
 isLhzHead :: (Int, Int) -> Getter (Torus (Cell RedBlack)) Bool
 isLhzHead pos = lookupPos pos . to isJust
 
-applyRuleToTorus :: (Int, Int) -> Greater cell RedBlack -> Torus (Cell RedBlack) -> Torus (Cell RedBlack)
+applyRuleToTorus :: (Int, Int) -> Greater Cell RedBlack -> Torus (Cell RedBlack) -> Torus (Cell RedBlack)
 applyRuleToTorus pos newGC = greaterCellFromTorus pos .~ newGC
 
 applyRuleToHeadSet :: (Int, Int) -> Direction -> Set (Int, Int) -> Set (Int, Int)

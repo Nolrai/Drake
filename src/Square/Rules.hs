@@ -38,7 +38,8 @@ import Relude
     (.),
   )
 import Square.Direction (Direction (..), inv, rotateClockwise)
-import DrawableCell
+-- import DrawableCell ()
+import RedBlack ( toggle, RedBlack(..) )
 
 data RelativeDirection
   = L -- Left
