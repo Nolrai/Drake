@@ -9,10 +9,7 @@
 {-# LANGUAGE OverloadedLists #-}
 
 module Hex.Rules
-  ( moveRule,
-    wallRules,
-    toggleRules,
-    queryRules,
+  (
     rotateBy,
     dirDiff,
     readBody,
@@ -20,7 +17,10 @@ module Hex.Rules
     RedBlack (..),
     toggle,
     Body (..),
+    toBody,
     cellToBody,
+    moveMap,
+    toggleMap,
   )
 where
 
@@ -31,6 +31,7 @@ import Hex.Direction (Direction (..), rotateClockwise, allDirections)
 import Hex.Cell
 import Data.Vector as Vector
 import RedBlack
+import Data.Maybe (catMaybes)
 
 data RelativeDirection
   = SharpLeft
@@ -155,5 +156,11 @@ wallRules =
   , (wall3, Just SharpLeft)
   ]
 
-moveRule :: (Cell RedBlack, RelativeDirection)
-moveRule = ((const Red) ^. toCell, Across)
+moveRules :: Vector (Body RedBlack, Maybe RelativeDirection)
+moveRules = pure (Body Red Red Red Red Red, Just Across)
+
+moveMap :: Map (Body RedBlack) (Maybe RelativeDirection) -- Nothing means back the way we came
+moveMap = Map.fromList $ Vector.toList $ moveRules <> queryRules <> wallRules
+
+toggleMap :: Map (Body RedBlack) (Body RedBlack)
+toggleMap = Map.fromList . Vector.toList $ toggleRules

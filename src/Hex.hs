@@ -165,8 +165,8 @@ word16 = from pack . middle . greaterCell
     g w = (fromIntegral (shiftR w 6), fromIntegral (w .&. Vector.foldr (.|.) 0 (bit <$> [0..5]))) 
 
 -- we only actually use the botom 12 bits
-ruleVector :: Maybe (Vector (Greater Cell RedBlack))
-ruleVector = generateM (2^12) (codeToMapEntry . fromIntegral) 
+ruleVector :: Vector (Maybe (Greater Cell RedBlack))
+ruleVector = maybe (error "RuleVector Failed") generate (2^12) (codeToMapEntry . fromIntegral)
 
 codeToMapEntry :: Word16 -> Maybe (Greater Cell RedBlack)
 codeToMapEntry lhsCode =
@@ -174,16 +174,16 @@ codeToMapEntry lhsCode =
     lhs <- old ^? asLHS
     let heads = Set.filter (\dir -> lhs ^. isHead dir) allDirections 
     guard (not $ Set.null heads) -- throwout ones that have no heads
-    pure (rhs heads ^. from asRHS)
+    newHeads <- (`lookUp` moveMap) `Set.map` heads
+    pure (rhs heads newHeads ^. from asRHS)
   where
     old :: Greater Cell RedBlack
     old = lhsCode ^. word16
-    toBody' :: Direction -> Body (Maybe RedBlack)
-    toBody' = old ^. inside . toBody
+    toBody' :: Direction -> (_, Body (Maybe RedBlack))
+    toBody' dir = old ^. inside . toBody dir
     lookupBody ruleMap headDir = let (_, body) = toBody' headDir in Map.lookup body ruleMap
-    newHeads = Set.map (\ headDir -> fromJust (lookUp headDir) moveMap)
     newBlack heads = fromMaybe (old ^. inside) . ala First Vector.sum $ lookupBody toggleMap <$> heads
-    rhs heads = (\dir -> if dir `Set.member` newHeads heads then Nothing else Just (if dir `Set.member` newBlack then Black else Red)) ^. toCell
+    rhs heads newHeads = (\dir -> if dir `Set.member` newHeads then Nothing else Just (if dir `Set.member` newBlack heads then Black else Red)) ^. toCell
 
 isHead :: Direction -> Lens' (Cell (Maybe RedBlack)) Bool
 isHead dir = subcell dir . to isNothing
@@ -205,18 +205,21 @@ applyRule old pos =
       maybe
         (id, Set.delete pos)
         (applyRuleResult pos)
-        (old ^. torus . lookupGreaterCell pos :: Maybe (Greater Cell RedBlack, Direction))
+        (old ^. torus . lookupPos pos :: Maybe (Greater Cell RedBlack))
 
 applyRuleResult ::
   (Int, Int) ->
-  (Greater Cell RedBlack, Direction) ->
+  Greater Cell RedBlack ->
   (Torus (Cell RedBlack) -> Torus (Cell RedBlack), Set (Int, Int) -> Set (Int, Int))
-applyRuleResult pos = applyRuleToTorus pos *** applyRuleToHeadSet pos
+applyRuleResult pos = (applyRuleToTorus pos newGC, applyRuleToHeadSet pos newGC)
 
 lookupGreaterCell :: Getter (Greater Cell RedBlack) (Maybe (Greater Cell RedBlack))
-lookupGreaterCell = set word16 . to (ruleVector !)
+lookupGreaterCell = to (join . f)
+  where
+    f :: Greater Cell RedBlack -> Maybe (Maybe (Greater Cell RedBlack))
+    f g = ruleVector !? fromIntegral (set word16 g 0)
 
-lookupPos :: (Int, Int) -> Getter (Torus (Cell RedBlack)) (Greater Cell RedBlack)
+lookupPos :: (Int, Int) -> Getter (Torus (Cell RedBlack)) (Maybe (Greater Cell RedBlack))
 lookupPos pos = greaterCellFromTorus pos . lookupGreaterCell
 
 isLhzHead :: (Int, Int) -> Getter (Torus (Cell RedBlack)) Bool
