@@ -96,7 +96,7 @@ onEditEvent (_highlight, _matrixSize, tileSize) event =
     case event of
       EventKey (MouseButton RightButton) G.Up _ screenPos -> handleMouseButtonUp (toIndex tileSize screenPos)
       EventKey (Char '>') G.Up _ _ -> updateRate %= (+1)
-      EventKey (Char '<') G.Up _ _ -> updateRate %= (-1)
+      EventKey (Char '<') G.Up _ _ -> updateRate %= (\x -> x - 1)
       EventKey (SpecialKey KeyEsc) G.Up _ _ -> R.exitSuccess
       EventKey (SpecialKey KeySpace) G.Up _ _ -> updateWorld
       _ -> pure ()
